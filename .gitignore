@@ -43,3 +43,33 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter Linux auto-generated files
+**/linux/flutter/
+**/linux/CMakeLists.txt
+**/linux/CMakeCache.txt
+**/linux/Makefile
+
+# Flutter Windows auto-generated files
+**/windows/flutter/
+**/windows/CMakeLists.txt
+**/windows/CMakeCache.txt
+**/windows/Makefile
+**/windows/runner/
+
+# Flutter macOS auto-generated files
+**/macos/Flutter/
+**/macos/CMakeLists.txt
+**/macos/CMakeCache.txt
+**/macos/Makefile
+**/macos/Runner/
+linux/runner/CMakeLists.txt
+linux/runner/main.cc
+linux/runner/my_application.cc
+linux/runner/my_application.h
+macos/Runner.xcodeproj/project.pbxproj
+macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+macos/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+macos/Runner.xcworkspace/contents.xcworkspacedata
+macos/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+macos/RunnerTests/RunnerTests.swift
