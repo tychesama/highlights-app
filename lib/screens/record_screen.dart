@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/record_provider.dart';
+import '../models/record.dart';
 
 class RecordScreen extends StatelessWidget {
-  final String title;
+  final Record record;
 
-  RecordScreen({required this.title}); // Accept title
+  RecordScreen({required this.record});
+
+  String formatTime(int milliseconds) {
+    int ms = milliseconds % 1000;
+    int seconds = (milliseconds ~/ 1000) % 60;
+    int minutes = (milliseconds ~/ 60000) % 60;
+    int hours = milliseconds ~/ 3600000;
+
+    return "${hours.toString().padLeft(2, '0')}:" 
+           "${minutes.toString().padLeft(2, '0')}:" 
+           "${seconds.toString().padLeft(2, '0')}:" 
+           "${ms.toString().padLeft(3, '0')}";
+  }
 
   @override
   Widget build(BuildContext context) {
     final recordProvider = Provider.of<RecordProvider>(context);
 
-    String formatTime(int milliseconds) {
-      int ms = milliseconds % 1000;
-      int seconds = (milliseconds ~/ 1000) % 60;
-      int minutes = (milliseconds ~/ 60000) % 60;
-      int hours = milliseconds ~/ 3600000;
-
-      return "${hours.toString().padLeft(2, '0')}:"
-            "${minutes.toString().padLeft(2, '0')}:"
-            "${seconds.toString().padLeft(2, '0')}:"
-            "${ms.toString().padLeft(3, '0')}";
-    }
-
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(record.name)),
       body: Column(
         children: [
           Padding(
@@ -36,15 +37,17 @@ class RecordScreen extends StatelessWidget {
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: recordProvider.timestamps.length,
+              itemCount: record.timestamps.length,
               itemBuilder: (context, index) {
-                final timestamp = recordProvider.timestamps[index];
+                final timestamp = record.timestamps[index];
                 return ListTile(
                   title: Text("Time: ${formatTime(timestamp['time'])}"),
                   subtitle: Text("Note: ${timestamp['description']}"),
                   trailing: IconButton(
                     icon: Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => recordProvider.removeTimestamp(index),
+                    onPressed: () {
+                      recordProvider.removeTimestampFromRecord(record, index);
+                    },
                   ),
                 );
               },
@@ -55,7 +58,9 @@ class RecordScreen extends StatelessWidget {
             child: Column(
               children: [
                 ElevatedButton(
-                  onPressed: recordProvider.isPlaying ? recordProvider.addTimestamp : null,
+                  onPressed: recordProvider.isPlaying
+                      ? () => recordProvider.addTimestampToRecord(record)
+                      : null,
                   style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 60)),
                   child: Text('Mark Timestamp', style: TextStyle(fontSize: 18)),
                 ),
@@ -66,7 +71,7 @@ class RecordScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 10),
                 ElevatedButton(
-                  onPressed: recordProvider.resetTimer,
+                  onPressed: () => recordProvider.resetTimerForRecord(record),
                   child: Text('Reset'),
                 ),
               ],
