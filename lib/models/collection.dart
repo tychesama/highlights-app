@@ -8,6 +8,7 @@ class Collection {
   String? description;
   DateTime dateCreated;
   DateTime lastUpdated;
+  String? thumbnail; 
 
   Collection({
     this.id,
@@ -17,6 +18,7 @@ class Collection {
     this.description,
     DateTime? dateCreated,
     DateTime? lastUpdated,
+    this.thumbnail,
   })  : dateCreated = dateCreated ?? DateTime.now(),
         lastUpdated = lastUpdated ?? DateTime.now();
 
@@ -30,6 +32,7 @@ class Collection {
       'description': description,
       'dateCreated': dateCreated.toIso8601String(),
       'lastUpdated': lastUpdated.toIso8601String(),
+      'thumbnail': thumbnail, 
     };
   }
 
@@ -43,6 +46,7 @@ class Collection {
       description: map['description'],
       dateCreated: DateTime.parse(map['dateCreated']),
       lastUpdated: DateTime.parse(map['lastUpdated']),
+      thumbnail: map['thumbnail'], 
     );
   }
 }

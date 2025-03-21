@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/record_provider.dart';
 import '../providers/collection_provider.dart';
 import '../models/record.dart';
 import '../models/collection.dart';
 import 'record_screen.dart';
+import 'collection_info_screen.dart';
+import 'dart:io';
+import '../services/database_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -12,10 +16,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  void _showNewRecordDialog() {
+  void _showNewRecordDialog(BuildContext context) {
     TextEditingController titleController = TextEditingController();
     TextEditingController episodeController = TextEditingController();
-    String selectedCollection = "Default";
+    TextEditingController notesController = TextEditingController();
+    int? selectedCollectionId;
+
+    final collectionProvider = Provider.of<CollectionProvider>(
+      context,
+      listen: false,
+    );
 
     showDialog(
       context: context,
@@ -35,23 +45,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: selectedCollection,
+              DropdownButtonFormField<int?>(
+                value: selectedCollectionId,
                 onChanged: (newValue) {
-                  selectedCollection = newValue!;
+                  selectedCollectionId = newValue;
                 },
-                items:
-                    [
-                      "Default",
-                      "Collection 1",
-                      "Collection 2",
-                    ] // Replace with dynamic collections later
-                    .map((collection) {
-                      return DropdownMenuItem<String>(
-                        value: collection,
-                        child: Text(collection),
-                      );
-                    }).toList(),
+                items: [
+                  DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text("No Collection"),
+                  ),
+                  ...collectionProvider.collections.map((collection) {
+                    return DropdownMenuItem<int?>(
+                      value: collection.id,
+                      child: Text(collection.name),
+                    );
+                  }).toList(),
+                ],
                 decoration: InputDecoration(labelText: "Select Collection"),
               ),
             ],
@@ -63,26 +73,26 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final recordProvider = Provider.of<RecordProvider>(
-                  context,
-                  listen: false,
-                );
-
-                Record newRecord = Record(
+                final newRecord = Record(
                   name:
                       titleController.text.isNotEmpty
                           ? titleController.text
                           : "Untitled",
-                  collection: Collection(
-                    name: selectedCollection,
-                    type: "", // Adjust as needed
-                    season: 1,
-                    description: "",
-                  ),
-                  episode: int.tryParse(episodeController.text) ?? 1,
+                  collectionId: selectedCollectionId,
+                  episode: int.tryParse(episodeController.text),
+                  notes: notesController.text,
+                  image: "",
+                  dateCreated: DateTime.now(),
+                  lastUpdated: DateTime.now(),
+                  timestamps: [],
                 );
 
+                final recordProvider = Provider.of<RecordProvider>(
+                  context,
+                  listen: false,
+                );
                 recordProvider.addRecord(newRecord);
+
                 Navigator.pop(context);
               },
               child: Text("OK"),
@@ -97,8 +107,27 @@ class _HomeScreenState extends State<HomeScreen> {
     TextEditingController nameController = TextEditingController();
     TextEditingController seasonController = TextEditingController();
     TextEditingController descriptionController = TextEditingController();
-    String selectedType = "Anime";
-    List<String> types = ["Anime", "Movie", "Series", "Others"];
+    String selectedType = "Livestream";
+    List<String> types = [
+      "Livestream",
+      "Anime",
+      "Movie",
+      "Series",
+      "Sports Game",
+      "Others",
+    ];
+    String? thumbnailPath;
+
+    Future<void> _pickThumbnail() async {
+      final ImagePicker _picker = ImagePicker();
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+
+      if (image != null) {
+        setState(() {
+          thumbnailPath = image.path;
+        });
+      }
+    }
 
     showDialog(
       context: context,
@@ -139,6 +168,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: InputDecoration(labelText: "Description"),
                 maxLines: 3,
               ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _pickThumbnail,
+                child: Text("Select Thumbnail"),
+              ),
+              if (thumbnailPath != null)
+                Image.file(
+                  File(thumbnailPath!),
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                ),
             ],
           ),
           actions: [
@@ -163,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   description: descriptionController.text,
                   dateCreated: DateTime.now(),
                   lastUpdated: DateTime.now(),
+                  thumbnail: thumbnailPath,
                 );
 
                 collectionProvider.addCollection(newCollection);
@@ -230,13 +272,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   PopupMenuItem(value: "Help", child: Text("Help")),
                   PopupMenuItem(value: "About", child: Text("About")),
                 ],
-            icon: Icon(Icons.more_vert), // Triple-dot icon
+            icon: Icon(Icons.more_vert),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Collection Section
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.20,
             child: Column(
@@ -268,22 +309,84 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: Consumer<CollectionProvider>(
                     builder: (context, collectionProvider, child) {
-                      print(
-                        "Collections count: ${collectionProvider.collections.length}",
-                      );
-
                       return ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: collectionProvider.collections.length,
                         itemBuilder: (context, index) {
                           final collection =
                               collectionProvider.collections[index];
-                          return Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 3),
-                            child: Card(
-                              child: SizedBox(
-                                width: 150,
-                                child: Center(child: Text(collection.name)),
+                          return KeyedSubtree(
+                            key: ValueKey(collection.id),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 3),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => CollectionInfoScreen(
+                                            collection: collection,
+                                          ),
+                                    ),
+                                  );
+                                },
+                                child: Card(
+                                  elevation: 5,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Container(
+                                    width: 150,
+                                    height: 150,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Color.fromRGBO(0, 0, 0, 0.2),
+                                          offset: Offset(-3, -3),
+                                          blurRadius: 6,
+                                        ),
+                                        BoxShadow(
+                                          color: Color.fromRGBO(0, 0, 0, 0.2),
+                                          offset: Offset(3, 3),
+                                          blurRadius: 6,
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Stack(
+                                        children: [
+                                          collection.thumbnail != null &&
+                                                  collection
+                                                      .thumbnail!
+                                                      .isNotEmpty
+                                              ? Opacity(
+                                                opacity: 0.7,
+                                                child: Image.file(
+                                                  File(collection.thumbnail!),
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                ),
+                                              )
+                                              : Container(color: Colors.grey),
+                                          Center(
+                                            child: Text(
+                                              collection.name,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           );
@@ -295,40 +398,67 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Episodes Section
+          // Records Section
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: EdgeInsets.only(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    bottom: 6,
+                  ),
+
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "Episodes",
+                        "Records",
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       IconButton(
                         icon: Icon(Icons.add),
                         onPressed: () {
-                          // PRESS ME HERE
+                          _showNewRecordDialog(context);
                         },
                       ),
                     ],
                   ),
                 ),
                 Expanded(
-                  child: Consumer<RecordProvider>(
-                    builder: (context, recordProvider, child) {
+                  child: Consumer2<RecordProvider, CollectionProvider>(
+                    builder: (
+                      context,
+                      recordProvider,
+                      collectionProvider,
+                      child,
+                    ) {
                       if (recordProvider.records.isEmpty) {
                         return Center(child: Text("No records found"));
                       }
+
                       return ListView.builder(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         itemCount: recordProvider.records.length,
                         itemBuilder: (context, index) {
                           final record = recordProvider.records[index];
+
+                          final Collection? collection =
+                              record.collectionId != null
+                                  ? collectionProvider.collections.firstWhere(
+                                    (c) => c.id == record.collectionId,
+                                    orElse:
+                                        () => Collection(
+                                          id: -1,
+                                          name: "Unknown",
+                                          season: 0,
+                                          thumbnail: "",
+                                        ),
+                                  )
+                                  : null;
+
                           return Padding(
                             padding: EdgeInsets.symmetric(vertical: 6),
                             child: InkWell(
@@ -342,32 +472,100 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 );
                               },
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(15),
                               child: Container(
-                                padding: EdgeInsets.all(16),
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 10,
+                                  horizontal: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.orange.shade200,
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(15),
                                 ),
-                                child: Column(
+                                child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      record.name,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.headlineSmall?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
+                                    if (collection?.thumbnail != null &&
+                                        collection!.thumbnail!.isNotEmpty)
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.file(
+                                          File(collection.thumbnail!),
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    else
+                                      Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade400,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.image_not_supported,
+                                          color: Colors.white70,
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      "Created: ${record.dateCreated}",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(color: Colors.black54),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            record.name,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.headlineSmall?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            () {
+                                              if (collection != null) {
+                                                final season =
+                                                    collection.season != null &&
+                                                            collection.season !=
+                                                                0
+                                                        ? "S${collection.season}"
+                                                        : "";
+                                                final episode =
+                                                    record.episode != null
+                                                        ? "Episode ${record.episode}"
+                                                        : "";
+                                                final title = [season, episode]
+                                                    .where((s) => s.isNotEmpty)
+                                                    .join(", ");
+                                                final collectionName =
+                                                    collection.name;
+                                                return "$title${title.isNotEmpty ? "  |  " : ""}$collectionName";
+                                              } else {
+                                                final episode =
+                                                    record.episode != null
+                                                        ? "Episode ${record.episode}"
+                                                        : "";
+                                                return episode.isNotEmpty
+                                                    ? episode
+                                                    : "No Collection";
+                                              }
+                                            }(),
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.copyWith(
+                                              color: Colors.black54,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -384,9 +582,68 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showNewRecordDialog,
-        child: Icon(Icons.add),
+      bottomNavigationBar: BottomAppBar(
+        color: Colors.transparent,
+        child: Padding(
+          padding: EdgeInsets.all(4.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    print('Home pressed');
+                  },
+                  child: Container(
+                    alignment: Alignment.center,
+                    height: 60,
+                    color: Colors.transparent,
+                    child: Icon(Icons.house),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    print('Star pressed');
+                  },
+                  child: Container(
+                    alignment: Alignment.center,
+                    height: 60,
+                    color: Colors.transparent,
+                    child: Icon(Icons.star),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    print('Notifications pressed');
+                  },
+                  child: Container(
+                    alignment: Alignment.center,
+                    height: 60,
+                    color: Colors.transparent,
+                    child: Icon(Icons.notifications),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    DatabaseHelper.instance.viewAllData();
+                  },
+                  child: Container(
+                    alignment: Alignment.center,
+                    height: 60,
+                    color: Colors.transparent,
+                    child: Icon(Icons.settings),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

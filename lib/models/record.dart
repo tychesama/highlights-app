@@ -1,11 +1,10 @@
 import 'dart:convert';
-import 'collection.dart';
 
 class Record {
   int? id;
   String name;
-  Collection collection;
-  int episode;
+  int? collectionId;
+  int? episode;
   String? notes;
   String? image;
   DateTime dateCreated;
@@ -15,8 +14,8 @@ class Record {
   Record({
     this.id,
     required this.name,
-    required this.collection,
-    required this.episode,
+    this.collectionId,
+    this.episode,
     this.notes,
     this.image,
     DateTime? dateCreated,
@@ -26,7 +25,6 @@ class Record {
         lastUpdated = lastUpdated ?? DateTime.now(),
         _timestamps = timestamps ?? [];
 
-  // Public getter for timestamps
   List<Map<String, dynamic>> get timestamps => _timestamps;
 
   void addTimestamp(int time, {String description = ""}) {
@@ -39,27 +37,25 @@ class Record {
     }
   }
 
-  // Convert to Map for SQLite
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'name': name,
-      'collection': jsonEncode(collection.toMap()), // Store collection as JSON
+      'collectionId': collectionId,
       'episode': episode,
       'notes': notes,
       'image': image,
       'dateCreated': dateCreated.toIso8601String(),
       'lastUpdated': lastUpdated.toIso8601String(),
-      'timestamps': jsonEncode(_timestamps), // Store timestamps as JSON
+      'timestamps': jsonEncode(_timestamps),
     };
   }
 
-  // Convert from Map
   factory Record.fromMap(Map<String, dynamic> map) {
     return Record(
       id: map['id'],
       name: map['name'],
-      collection: Collection.fromMap(jsonDecode(map['collection'])), // Convert JSON back to Collection
+      collectionId: map['collectionId'],
       episode: map['episode'],
       notes: map['notes'],
       image: map['image'],

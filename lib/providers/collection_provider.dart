@@ -11,6 +11,15 @@ class CollectionProvider with ChangeNotifier {
     fetchCollections();
   }
 
+  Collection? getCollectionById(int collectionId) {
+    try {
+      return collections.firstWhere((collection) => collection.id == collectionId);
+    } catch (e) {
+      return null; 
+    }
+  }
+
+
   Future<void> fetchCollections() async {
     _collections = await DatabaseHelper.instance.getCollections();
     notifyListeners();
