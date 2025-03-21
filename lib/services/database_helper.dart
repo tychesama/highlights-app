@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import '../models/record.dart';
 import '../models/collection.dart';
 import 'dart:convert';
+import '../services/database_helper.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -30,7 +31,8 @@ class DatabaseHelper {
             season INTEGER,
             description TEXT,
             dateCreated TEXT,
-            lastUpdated TEXT
+            lastUpdated TEXT,
+            thumbnail TEXT
           )
         ''');
 
@@ -62,6 +64,7 @@ class DatabaseHelper {
       'description': collection.description,
       'dateCreated': collection.dateCreated.toIso8601String(),
       'lastUpdated': collection.lastUpdated.toIso8601String(),
+      'thumbnail': collection.thumbnail,
     });
   }
 
@@ -78,6 +81,7 @@ class DatabaseHelper {
         description: maps[i]['description'],
         dateCreated: DateTime.parse(maps[i]['dateCreated']),
         lastUpdated: DateTime.parse(maps[i]['lastUpdated']),
+        thumbnail: maps[i]['thumbnail'],
       );
     });
   }
@@ -99,6 +103,7 @@ class DatabaseHelper {
         'season': collection.season,
         'description': collection.description,
         'lastUpdated': DateTime.now().toIso8601String(),
+        'thumbnail': collection.thumbnail,
       },
       where: 'id = ?',
       whereArgs: [collection.id],
