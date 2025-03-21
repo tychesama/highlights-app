@@ -54,7 +54,6 @@ class DatabaseHelper {
     );
   }
 
-  // Insert Collection
   Future<int> insertCollection(Collection collection) async {
     final db = await database;
     return await db.insert('collections', {
@@ -68,7 +67,6 @@ class DatabaseHelper {
     });
   }
 
-  // Get all Collections
   Future<List<Collection>> getCollections() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('collections');
@@ -86,13 +84,11 @@ class DatabaseHelper {
     });
   }
 
-  // Delete Collection
   Future<int> deleteCollection(int id) async {
     final db = await database;
     return await db.delete('collections', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Update Collection
   Future<int> updateCollection(Collection collection) async {
     final db = await database;
     return await db.update(
@@ -110,22 +106,20 @@ class DatabaseHelper {
     );
   }
 
-  // Insert Record
   Future<int> insertRecord(Record record) async {
     final db = await database;
     return await db.insert('records', {
       'name': record.name,
-      'collectionId': record.collection?.id,
+      'collectionId': record.collectionId,
       'episode': record.episode,
       'dateCreated': record.dateCreated.toIso8601String(),
       'lastUpdated': record.lastUpdated.toIso8601String(),
-      'timestamps': record.timestamps.toString(),
+      'timestamps': jsonEncode(record.timestamps),
       'notes': record.notes,
       'image': record.image,
     });
   }
 
-  // Get Records by Collection ID
   Future<List<Record>> getRecordsByCollection(int collectionId) async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -138,10 +132,7 @@ class DatabaseHelper {
       return Record(
         id: maps[i]['id'],
         name: maps[i]['name'],
-        collection: Collection(
-          id: maps[i]['collectionId'],
-          name: "",
-        ), // Fetch full collection separately if needed
+        collectionId: maps[i]['collectionId'],
         episode: maps[i]['episode'],
         dateCreated: DateTime.parse(maps[i]['dateCreated']),
         lastUpdated: DateTime.parse(maps[i]['lastUpdated']),
@@ -152,23 +143,21 @@ class DatabaseHelper {
     });
   }
 
-  // Delete Record
   Future<int> deleteRecord(int id) async {
     final db = await database;
     return await db.delete('records', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Update Record
   Future<int> updateRecord(Record record) async {
     final db = await database;
     return await db.update(
       'records',
       {
         'name': record.name,
-        'collectionId': record.collection?.id,
+        'collectionId': record.collectionId,
         'episode': record.episode,
         'lastUpdated': DateTime.now().toIso8601String(),
-        'timestamps': record.timestamps.toString(),
+        'timestamps': jsonEncode(record.timestamps),
         'notes': record.notes,
         'image': record.image,
       },
@@ -177,7 +166,6 @@ class DatabaseHelper {
     );
   }
 
-  // Fetch all Record
   Future<List<Record>> getAllRecords() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('records');
@@ -186,7 +174,7 @@ class DatabaseHelper {
       return Record(
         id: maps[i]['id'],
         name: maps[i]['name'],
-        collection: Collection(id: maps[i]['collectionId'], name: ""),
+        collectionId: maps[i]['collectionId'],
         episode: maps[i]['episode'],
         dateCreated: DateTime.parse(maps[i]['dateCreated']),
         lastUpdated: DateTime.parse(maps[i]['lastUpdated']),
@@ -197,31 +185,21 @@ class DatabaseHelper {
     });
   }
 
-  // Helper to Decode JSON
   List<Map<String, dynamic>> _decodeTimestamps(String json) {
     return (jsonDecode(json) as List)
         .map((e) => e as Map<String, dynamic>)
         .toList();
   }
 
-
-
-
-  // debugging
   Future<void> viewAllData() async {
     final db = await database;
-
-    // Fetch records
-    final records = await db.query('records'); // 'records' is the table name
+    final records = await db.query('records');
     for (var record in records) {
-      print(record); // Print each record to the console
+      print(record);
     }
-
-    // Fetch collections
-    final collections = await db.query('collections'); // 'collections' is the table name
+    final collections = await db.query('collections');
     for (var collection in collections) {
-      print(collection); // Print each collection to the console
+      print(collection);
     }
   }
-
 }
