@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/record_provider.dart';
+import '../providers/collection_provider.dart';
 import '../models/record.dart';
-import '../models/type.dart';
+import '../models/collection.dart';
 import 'record_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,8 +14,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   void _showNewRecordDialog() {
     TextEditingController titleController = TextEditingController();
-    String selectedOption = "Anime"; // Default value
-    List<String> options = ["Anime", "Movie", "Series", "Others"];
+    TextEditingController episodeController = TextEditingController();
+    String selectedCollection = "Default";
 
     showDialog(
       context: context,
@@ -28,22 +29,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: titleController,
                 decoration: InputDecoration(labelText: "Enter title"),
               ),
+              TextField(
+                controller: episodeController,
+                decoration: InputDecoration(labelText: "Episode Number"),
+                keyboardType: TextInputType.number,
+              ),
               SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                value: selectedOption,
+                value: selectedCollection,
                 onChanged: (newValue) {
-                  setState(() {
-                    selectedOption = newValue!;
-                  });
+                  selectedCollection = newValue!;
                 },
                 items:
-                    options.map((option) {
+                    [
+                      "Default",
+                      "Collection 1",
+                      "Collection 2",
+                    ] // Replace with dynamic collections later
+                    .map((collection) {
                       return DropdownMenuItem<String>(
-                        value: option,
-                        child: Text(option),
+                        value: collection,
+                        child: Text(collection),
                       );
                     }).toList(),
-                decoration: InputDecoration(labelText: "Select Category"),
+                decoration: InputDecoration(labelText: "Select Collection"),
               ),
             ],
           ),
@@ -59,70 +68,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   listen: false,
                 );
 
-                Type selectedType;
-                switch (selectedOption) {
-                  case "Anime":
-                    selectedType = Anime(
-                      title:
-                          titleController.text.isNotEmpty
-                              ? titleController.text
-                              : "Untitled",
-                      season: 1,
-                      episode: 1,
-                      description: "",
-                    );
-                    break;
-                  case "Movie":
-                    selectedType = Movie(
-                      title:
-                          titleController.text.isNotEmpty
-                              ? titleController.text
-                              : "Untitled",
-                      description: "",
-                    );
-                    break;
-                  case "Series":
-                    selectedType = Series(
-                      title:
-                          titleController.text.isNotEmpty
-                              ? titleController.text
-                              : "Untitled",
-                      season: 1,
-                      episode: 1,
-                      description: "",
-                    );
-                    break;
-                  case "Stream":
-                    selectedType = Stream(
-                      title:
-                          titleController.text.isNotEmpty
-                              ? titleController.text
-                              : "Untitled",
-                      description: "",
-                    );
-                    break;
-                  default:
-                    selectedType = Others(
-                      title:
-                          titleController.text.isNotEmpty
-                              ? titleController.text
-                              : "Untitled",
-                      description: "",
-                    );
-                }
-
-                // Create new record
                 Record newRecord = Record(
                   name:
                       titleController.text.isNotEmpty
                           ? titleController.text
                           : "Untitled",
-                  type: selectedType,
+                  collection: Collection(
+                    name: selectedCollection,
+                    type: "", // Adjust as needed
+                    season: 1,
+                    description: "",
+                  ),
+                  episode: int.tryParse(episodeController.text) ?? 1,
                 );
 
-                // Add record to provider
                 recordProvider.addRecord(newRecord);
-                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context);
               },
               child: Text("OK"),
             ),
@@ -131,6 +92,85 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+
+  void _showNewCollectionDialog(BuildContext context) {
+  TextEditingController nameController = TextEditingController();
+  TextEditingController seasonController = TextEditingController();
+  TextEditingController descriptionController = TextEditingController();
+  String selectedType = "Anime";
+  List<String> types = ["Anime", "Movie", "Series", "Others"];
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text("New Collection"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(labelText: "Collection Name"),
+            ),
+            SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: selectedType,
+              onChanged: (newValue) {
+                selectedType = newValue!;
+              },
+              items: types.map((type) {
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Text(type),
+                );
+              }).toList(),
+              decoration: InputDecoration(labelText: "Select Type"),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: seasonController,
+              decoration: InputDecoration(labelText: "Season (Optional)"),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: descriptionController,
+              decoration: InputDecoration(labelText: "Description"),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final collectionProvider =
+                  Provider.of<CollectionProvider>(context, listen: false);
+
+              Collection newCollection = Collection(
+                name: nameController.text.isNotEmpty
+                    ? nameController.text
+                    : "Untitled",
+                type: selectedType,
+                season: int.tryParse(seasonController.text) ?? 1,
+                description: descriptionController.text,
+                dateCreated: DateTime.now(),
+                lastUpdated: DateTime.now(),
+              );
+
+              collectionProvider.addCollection(newCollection);
+              Navigator.pop(context);
+            },
+            child: Text("OK"),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   bool _isSearching = false;
   TextEditingController _searchController = TextEditingController();
@@ -192,50 +232,60 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          // Categories Section
+          // Collection Section
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.20,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 6),
+                  padding: EdgeInsets.only(
+                    top: 8,
+                    left: 16,
+                    right: 16,
+                    bottom: 6,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "Category",
-                        style: Theme.of(
-                          context,
-                        ).textTheme.headlineSmall,
+                        "Collection",
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       IconButton(
                         icon: Icon(Icons.add),
                         onPressed: () {
-                          // PRssss
+                          _showNewCollectionDialog(context);
                         },
                       ),
                     ],
                   ),
                 ),
                 Expanded(
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: 5,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 3),
-                        child: Card(
-                          child: SizedBox(
-                            width: 150,
-                            child: Center(child: Text("Category ${index + 1}")),
-                          ),
-                        ),
+                  child: Consumer<CollectionProvider>(
+                    builder: (context, collectionProvider, child) {
+                      print("Collections count: ${collectionProvider.collections.length}");
+
+                      return ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: collectionProvider.collections.length,
+                        itemBuilder: (context, index) {
+                          final collection = collectionProvider.collections[index];
+                          return Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 3),
+                            child: Card(
+                              child: SizedBox(
+                                width: 150,
+                                child: Center(child: Text(collection.name)),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
                 ),
-              ],
+              ]
             ),
           ),
           // Episodes Section
@@ -250,9 +300,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(
                         "Episodes",
-                        style: Theme.of(
-                          context,
-                        ).textTheme.headlineSmall,
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       IconButton(
                         icon: Icon(Icons.add),
@@ -326,29 +374,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
-      // body: Consumer<RecordProvider>(
-      //   builder: (context, recordProvider, child) {
-      //     return ListView.builder(
-      //       itemCount: recordProvider.records.length,
-      //       itemBuilder: (context, index) {
-      //         final record = recordProvider.records[index];
-      //         return ListTile(
-      //           title: Text(record.name),
-      //           subtitle: Text("Created: ${record.dateCreated}"),
-      //           onTap: () {
-      //             Navigator.push(
-      //               context,
-      //               MaterialPageRoute(
-      //                 builder: (context) => RecordScreen(record: record),
-      //               ),
-      //             );
-      //           },
-      //         );
-      //       },
-      //     );
-      //   },
-      // ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showNewRecordDialog,
         child: Icon(Icons.add),
