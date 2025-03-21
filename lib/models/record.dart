@@ -4,8 +4,8 @@ import 'collection.dart';
 class Record {
   int? id;
   String name;
-  Collection collection;
-  int episode;
+  Collection? collection;
+  int? episode;
   String? notes;
   String? image;
   DateTime dateCreated;
@@ -15,8 +15,8 @@ class Record {
   Record({
     this.id,
     required this.name,
-    required this.collection,
-    required this.episode,
+    this.collection,
+    this.episode,
     this.notes,
     this.image,
     DateTime? dateCreated,
@@ -44,7 +44,7 @@ class Record {
     return {
       'id': id,
       'name': name,
-      'collection': jsonEncode(collection.toMap()), // Store collection as JSON
+      'collection': collection != null ? jsonEncode(collection!.toMap()) : null, // Store collection as JSON
       'episode': episode,
       'notes': notes,
       'image': image,
@@ -59,7 +59,9 @@ class Record {
     return Record(
       id: map['id'],
       name: map['name'],
-      collection: Collection.fromMap(jsonDecode(map['collection'])), // Convert JSON back to Collection
+      collection: map['collection'] != null 
+        ? Collection.fromMap(jsonDecode(map['collection'])) 
+        : null, 
       episode: map['episode'],
       notes: map['notes'],
       image: map['image'],

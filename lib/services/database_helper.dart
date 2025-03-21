@@ -203,4 +203,25 @@ class DatabaseHelper {
         .map((e) => e as Map<String, dynamic>)
         .toList();
   }
+
+
+
+
+  // debugging
+  Future<void> viewAllData() async {
+    final db = await database;
+
+    // Fetch records
+    final records = await db.query('records'); // 'records' is the table name
+    for (var record in records) {
+      print(record); // Print each record to the console
+    }
+
+    // Fetch collections
+    final collections = await db.query('collections'); // 'collections' is the table name
+    for (var collection in collections) {
+      print(collection); // Print each collection to the console
+    }
+  }
+
 }
