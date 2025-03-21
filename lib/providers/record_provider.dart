@@ -1,15 +1,55 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import '../models/record.dart';
+import 'dart:async';
+import '../services/database_helper.dart';
 
 class RecordProvider extends ChangeNotifier {
-  List<Map<String, dynamic>> _timestamps = [];
+  List<Record> _records = [];
   bool _isPlaying = false;
-  final Stopwatch _stopwatch = Stopwatch();
+  Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
 
-  List<Map<String, dynamic>> get timestamps => _timestamps;
+  RecordProvider() {
+    fetchRecords(); // Load records on startup
+  }
+
+  List<Record> get records => _records;
+
+  Future<void> fetchRecords() async {
+    _records = await DatabaseHelper.instance.getAllRecords(); // Fetch all records
+    notifyListeners();
+  }
+
+  Future<void> addRecord(Record record) async {
+    await DatabaseHelper.instance.insertRecord(record);
+    await fetchRecords(); // Refresh all records
+  }
+
+  Future<void> deleteRecord(int id) async {
+    await DatabaseHelper.instance.deleteRecord(id);
+    await fetchRecords(); // Refresh all records
+  }
+
   bool get isPlaying => _isPlaying;
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
+
+  void addRecordLocal(Record record) {
+    _records.add(record);
+    notifyListeners();
+  }
+
+  void addTimestampToRecord(Record record, {String? description}) {
+    record.addTimestamp(
+      _stopwatch.elapsedMilliseconds,
+      description: description ?? "",
+    );
+    notifyListeners();
+  }
+
+  void removeTimestampFromRecord(Record record, int index) {
+    record.removeTimestamp(index);
+    notifyListeners();
+  }
 
   void togglePlay() {
     if (_isPlaying) {
@@ -17,32 +57,17 @@ class RecordProvider extends ChangeNotifier {
       _timer?.cancel();
     } else {
       _stopwatch.start();
-      _timer = Timer.periodic(Duration(milliseconds: 10), (timer) {
-        notifyListeners(); // Update UI every 10ms
+      _timer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+        notifyListeners();
       });
     }
     _isPlaying = !_isPlaying;
     notifyListeners();
   }
 
-  void addTimestamp({String? description}) {
-    _timestamps.add({
-      "time": _stopwatch.elapsedMilliseconds,
-      "description": description ?? "",
-    });
-    notifyListeners();
-  }
-
-  void removeTimestamp(int index) {
-    if (index >= 0 && index < _timestamps.length) {
-      _timestamps.removeAt(index);
-      notifyListeners();
-    }
-  }
-
-  void resetTimer() {
+  void resetTimerForRecord(Record record) {
     _stopwatch.reset();
-    _timestamps.clear();
+    record.timestamps.clear();
     _isPlaying = false;
     notifyListeners();
   }
