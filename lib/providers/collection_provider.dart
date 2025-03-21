@@ -1,11 +1,52 @@
 import 'package:flutter/material.dart';
 import '../models/collection.dart';
 import '../services/database_helper.dart';
+import 'record_provider.dart';
+import '../models/record.dart';
+
 
 class CollectionProvider with ChangeNotifier {
   List<Collection> _collections = [];
+  List<Collection> _filtered = [];
+  String _searchQuery = '';
 
-  List<Collection> get collections => _collections;
+  List<Collection> get filteredCollections {
+    if (_searchQuery.isEmpty) return _collections;
+    return _filtered;
+  }
+
+  void setCollections(List<Collection> collections) {
+    _collections = collections;
+    notifyListeners();
+  }
+
+
+
+  void updateSearchQuery(String query, List<Record> allRecords) {
+    _searchQuery = query;
+    final lowerQuery = query.toLowerCase();
+
+    _filtered = _collections.where((collection) {
+      final collectionMatches = collection.name.toLowerCase().contains(lowerQuery);
+
+      final recordMatches = allRecords.any((record) =>
+          record.collectionId == collection.id &&
+          record.name.toLowerCase().contains(lowerQuery));
+
+      return collectionMatches || recordMatches;
+    }).toList();
+
+    notifyListeners();
+  }
+  
+  void clearSearch() {
+    _searchQuery = '';
+    _filtered = [];
+    notifyListeners();
+  }
+
+
+
 
   CollectionProvider() {
     fetchCollections();
@@ -13,12 +54,13 @@ class CollectionProvider with ChangeNotifier {
 
   Collection? getCollectionById(int collectionId) {
     try {
-      return collections.firstWhere((collection) => collection.id == collectionId);
+      return _collections.firstWhere(
+        (collection) => collection.id == collectionId,
+      );
     } catch (e) {
-      return null; 
+      return null;
     }
   }
-
 
   Future<void> fetchCollections() async {
     _collections = await DatabaseHelper.instance.getCollections();
@@ -33,5 +75,14 @@ class CollectionProvider with ChangeNotifier {
   Future<void> deleteCollection(int id) async {
     await DatabaseHelper.instance.deleteCollection(id);
     fetchCollections();
+  }
+
+  void updateCollectionLastUpdated(int collectionId, DateTime newTime) {
+    final index = _collections.indexWhere((c) => c.id == collectionId);
+    if (index != -1) {
+      _collections[index].lastUpdated = newTime;
+      _collections.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+      notifyListeners();
+    }
   }
 }

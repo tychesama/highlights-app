@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     value: null,
                     child: Text("No Collection"),
                   ),
-                  ...collectionProvider.collections.map((collection) {
+                  ...collectionProvider.filteredCollections.map((collection) {
                     return DropdownMenuItem<int?>(
                       value: collection.id,
                       child: Text(collection.name),
@@ -226,12 +226,28 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         elevation: 4,
-        shadowColor: Colors.black.withOpacity(0.2),
+        shadowColor: Color.fromRGBO(0, 0, 0, 0.2),
         title:
             _isSearching
                 ? TextField(
                   controller: _searchController,
                   autofocus: true,
+                  onChanged: (value) {
+                    final recordProvider = Provider.of<RecordProvider>(
+                      context,
+                      listen: false,
+                    );
+                    final collectionProvider = Provider.of<CollectionProvider>(
+                      context,
+                      listen: false,
+                    );
+
+                    collectionProvider.updateSearchQuery(
+                      value,
+                      recordProvider.records,
+                    );
+                    recordProvider.updateSearchQuery(value);
+                  },
                   decoration: InputDecoration(
                     hintText: "Search...",
                     border: InputBorder.none,
@@ -248,6 +264,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       _isSearching = false;
                       _searchController.clear();
                     });
+
+                    final recordProvider = Provider.of<RecordProvider>(
+                      context,
+                      listen: false,
+                    );
+                    final collectionProvider = Provider.of<CollectionProvider>(
+                      context,
+                      listen: false,
+                    );
+
+                    recordProvider.updateSearchQuery('');
+                    collectionProvider.updateSearchQuery(
+                      '',
+                      recordProvider.records,
+                    ); // Pass all records here
                   },
                 )
                 : null,
@@ -309,12 +340,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: Consumer<CollectionProvider>(
                     builder: (context, collectionProvider, child) {
+                      final sortedCollections = [
+                        ...collectionProvider.filteredCollections,
+                      ]..sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+
+                      if (sortedCollections.isEmpty) {
+                        return Center(child: Text("No collection found"));
+                      }
+
                       return ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: collectionProvider.collections.length,
+                        itemCount: sortedCollections.length,
                         itemBuilder: (context, index) {
-                          final collection =
-                              collectionProvider.collections[index];
+                          final collection = sortedCollections[index];
                           return KeyedSubtree(
                             key: ValueKey(collection.id),
                             child: Padding(
@@ -343,12 +381,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                       borderRadius: BorderRadius.circular(10),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Color.fromRGBO(0, 0, 0, 0.2),
+                                          color: Colors.black26,
                                           offset: Offset(-3, -3),
                                           blurRadius: 6,
                                         ),
                                         BoxShadow(
-                                          color: Color.fromRGBO(0, 0, 0, 0.2),
+                                          color: Colors.black26,
                                           offset: Offset(3, 3),
                                           blurRadius: 6,
                                         ),
@@ -435,28 +473,33 @@ class _HomeScreenState extends State<HomeScreen> {
                       collectionProvider,
                       child,
                     ) {
-                      if (recordProvider.records.isEmpty) {
+                      if (recordProvider.filteredRecords.isEmpty) {
                         return Center(child: Text("No records found"));
                       }
 
+                      final sortedRecords = [
+                        ...recordProvider.filteredRecords,
+                      ]..sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+
                       return ListView.builder(
                         padding: EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: recordProvider.records.length,
+                        itemCount: sortedRecords.length,
                         itemBuilder: (context, index) {
-                          final record = recordProvider.records[index];
+                          final record = sortedRecords[index];
 
                           final Collection? collection =
                               record.collectionId != null
-                                  ? collectionProvider.collections.firstWhere(
-                                    (c) => c.id == record.collectionId,
-                                    orElse:
-                                        () => Collection(
-                                          id: -1,
-                                          name: "Unknown",
-                                          season: 0,
-                                          thumbnail: "",
-                                        ),
-                                  )
+                                  ? collectionProvider.filteredCollections
+                                      .firstWhere(
+                                        (c) => c.id == record.collectionId,
+                                        orElse:
+                                            () => Collection(
+                                              id: -1,
+                                              name: "Unknown",
+                                              season: 0,
+                                              thumbnail: "",
+                                            ),
+                                      )
                                   : null;
 
                           return Padding(
@@ -602,32 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    print('Star pressed');
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    height: 60,
-                    color: Colors.transparent,
-                    child: Icon(Icons.star),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    print('Notifications pressed');
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    height: 60,
-                    color: Colors.transparent,
-                    child: Icon(Icons.notifications),
-                  ),
-                ),
-              ),
+
               Expanded(
                 child: InkWell(
                   onTap: () {
