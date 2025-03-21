@@ -3,7 +3,7 @@ import 'dart:convert';
 class Collection {
   int? id;
   String name;
-  String type;
+  String? type;
   int? season;
   String? description;
   DateTime dateCreated;
@@ -12,7 +12,7 @@ class Collection {
   Collection({
     this.id,
     required this.name,
-    required this.type,
+    this.type,
     this.season,
     this.description,
     DateTime? dateCreated,

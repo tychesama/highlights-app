@@ -1,24 +1,48 @@
 import 'package:flutter/material.dart';
 import '../models/record.dart';
 import 'dart:async';
+import '../services/database_helper.dart';
 
 class RecordProvider extends ChangeNotifier {
-  final List<Record> _records = [];
+  List<Record> _records = [];
   bool _isPlaying = false;
-  final Stopwatch _stopwatch = Stopwatch();
+  Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
 
+  RecordProvider() {
+    fetchRecords(); // Load records on startup
+  }
+
   List<Record> get records => _records;
+
+  Future<void> fetchRecords() async {
+    _records = await DatabaseHelper.instance.getAllRecords(); // Fetch all records
+    notifyListeners();
+  }
+
+  Future<void> addRecord(Record record) async {
+    await DatabaseHelper.instance.insertRecord(record);
+    await fetchRecords(); // Refresh all records
+  }
+
+  Future<void> deleteRecord(int id) async {
+    await DatabaseHelper.instance.deleteRecord(id);
+    await fetchRecords(); // Refresh all records
+  }
+
   bool get isPlaying => _isPlaying;
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
 
-  void addRecord(Record record) {
+  void addRecordLocal(Record record) {
     _records.add(record);
     notifyListeners();
   }
 
   void addTimestampToRecord(Record record, {String? description}) {
-    record.addTimestamp(_stopwatch.elapsedMilliseconds, description: description ?? "");
+    record.addTimestamp(
+      _stopwatch.elapsedMilliseconds,
+      description: description ?? "",
+    );
     notifyListeners();
   }
 
@@ -38,7 +62,7 @@ class RecordProvider extends ChangeNotifier {
       });
     }
     _isPlaying = !_isPlaying;
-    notifyListeners(); 
+    notifyListeners();
   }
 
   void resetTimerForRecord(Record record) {

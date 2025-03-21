@@ -94,83 +94,87 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showNewCollectionDialog(BuildContext context) {
-  TextEditingController nameController = TextEditingController();
-  TextEditingController seasonController = TextEditingController();
-  TextEditingController descriptionController = TextEditingController();
-  String selectedType = "Anime";
-  List<String> types = ["Anime", "Movie", "Series", "Others"];
+    TextEditingController nameController = TextEditingController();
+    TextEditingController seasonController = TextEditingController();
+    TextEditingController descriptionController = TextEditingController();
+    String selectedType = "Anime";
+    List<String> types = ["Anime", "Movie", "Series", "Others"];
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text("New Collection"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: "Collection Name"),
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("New Collection"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: "Collection Name"),
+              ),
+              SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: selectedType,
+                onChanged: (newValue) {
+                  selectedType = newValue!;
+                },
+                items:
+                    types.map((type) {
+                      return DropdownMenuItem<String>(
+                        value: type,
+                        child: Text(type),
+                      );
+                    }).toList(),
+                decoration: InputDecoration(labelText: "Select Type"),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: seasonController,
+                decoration: InputDecoration(labelText: "Season (Optional)"),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: descriptionController,
+                decoration: InputDecoration(labelText: "Description"),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
             ),
-            SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: selectedType,
-              onChanged: (newValue) {
-                selectedType = newValue!;
-              },
-              items: types.map((type) {
-                return DropdownMenuItem<String>(
-                  value: type,
-                  child: Text(type),
+            ElevatedButton(
+              onPressed: () {
+                final collectionProvider = Provider.of<CollectionProvider>(
+                  context,
+                  listen: false,
                 );
-              }).toList(),
-              decoration: InputDecoration(labelText: "Select Type"),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: seasonController,
-              decoration: InputDecoration(labelText: "Season (Optional)"),
-              keyboardType: TextInputType.number,
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(labelText: "Description"),
-              maxLines: 3,
+
+                Collection newCollection = Collection(
+                  name:
+                      nameController.text.isNotEmpty
+                          ? nameController.text
+                          : "Untitled",
+                  type: selectedType,
+                  season: int.tryParse(seasonController.text) ?? 1,
+                  description: descriptionController.text,
+                  dateCreated: DateTime.now(),
+                  lastUpdated: DateTime.now(),
+                );
+
+                collectionProvider.addCollection(newCollection);
+                Navigator.pop(context);
+              },
+              child: Text("OK"),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final collectionProvider =
-                  Provider.of<CollectionProvider>(context, listen: false);
-
-              Collection newCollection = Collection(
-                name: nameController.text.isNotEmpty
-                    ? nameController.text
-                    : "Untitled",
-                type: selectedType,
-                season: int.tryParse(seasonController.text) ?? 1,
-                description: descriptionController.text,
-                dateCreated: DateTime.now(),
-                lastUpdated: DateTime.now(),
-              );
-
-              collectionProvider.addCollection(newCollection);
-              Navigator.pop(context);
-            },
-            child: Text("OK"),
-          ),
-        ],
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   bool _isSearching = false;
   TextEditingController _searchController = TextEditingController();
@@ -264,13 +268,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: Consumer<CollectionProvider>(
                     builder: (context, collectionProvider, child) {
-                      print("Collections count: ${collectionProvider.collections.length}");
+                      print(
+                        "Collections count: ${collectionProvider.collections.length}",
+                      );
 
                       return ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: collectionProvider.collections.length,
                         itemBuilder: (context, index) {
-                          final collection = collectionProvider.collections[index];
+                          final collection =
+                              collectionProvider.collections[index];
                           return Padding(
                             padding: EdgeInsets.symmetric(horizontal: 3),
                             child: Card(
@@ -285,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
-              ]
+              ],
             ),
           ),
           // Episodes Section
@@ -314,6 +321,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: Consumer<RecordProvider>(
                     builder: (context, recordProvider, child) {
+                      if (recordProvider.records.isEmpty) {
+                        return Center(child: Text("No records found"));
+                      }
                       return ListView.builder(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         itemCount: recordProvider.records.length,
