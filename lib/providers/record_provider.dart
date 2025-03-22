@@ -38,6 +38,16 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateRecord(Record updatedRecord) {
+    final index = _records.indexWhere(
+      (record) => record.id == updatedRecord.id,
+    );
+    if (index != -1) {
+      _records[index] = updatedRecord;
+      notifyListeners();
+    }
+  }
+
   Future<void> addRecord(Record record) async {
     await DatabaseHelper.instance.insertRecord(record);
     await fetchRecords();
@@ -60,10 +70,11 @@ class RecordProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteRecord(int id) async {
-    await DatabaseHelper.instance.deleteRecord(id);
-    await fetchRecords(); // Refresh all records
-  }
+  Future<void> deleteRecord(Record record) async {
+  await DatabaseHelper.instance.deleteRecord(record.id!);
+  await fetchRecords(); // Refresh all records
+}
+
 
   bool get isPlaying => _isPlaying;
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
