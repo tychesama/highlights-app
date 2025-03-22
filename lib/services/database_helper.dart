@@ -4,6 +4,7 @@ import '../models/record.dart';
 import '../models/collection.dart';
 import 'dart:convert';
 import '../services/database_helper.dart';
+import '../providers/collection_provider.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -108,7 +109,11 @@ class DatabaseHelper {
 
   Future<int> insertRecord(Record record) async {
     final db = await database;
-    return await db.insert('records', {
+
+    final now = DateTime.now();
+    record.lastUpdated = now;
+
+    final recordId = await db.insert('records', {
       'name': record.name,
       'collectionId': record.collectionId,
       'episode': record.episode,
@@ -118,6 +123,18 @@ class DatabaseHelper {
       'notes': record.notes,
       'image': record.image,
     });
+
+    // Also update the parent collection's lastUpdated field
+    if (record.collectionId != null) {
+      await db.update(
+        'collections',
+        {'lastUpdated': now.toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [record.collectionId],
+      );
+    }
+
+    return recordId;
   }
 
   Future<List<Record>> getRecordsByCollection(int collectionId) async {

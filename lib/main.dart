@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/record_provider.dart';
 import 'providers/collection_provider.dart';
 import 'screens/home_screen.dart';
+import 'services/navigation_service.dart';
 
 void main() {
   runApp(
@@ -48,6 +49,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: HomeScreen(),
+      navigatorKey: NavigationService.navigatorKey,
     );
   }
 }

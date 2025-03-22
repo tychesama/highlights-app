@@ -64,4 +64,24 @@ class Record {
       timestamps: List<Map<String, dynamic>>.from(jsonDecode(map['timestamps'])),
     );
   }
+
+  Record copyWith({
+    String? name,
+    int? episode,
+    String? notes,
+    int? collectionId,
+    DateTime? lastUpdated,
+  }) {
+    return Record(
+      id: this.id,
+      name: name ?? this.name,
+      episode: episode ?? this.episode,
+      notes: notes ?? this.notes,
+      collectionId: collectionId ?? this.collectionId,
+      dateCreated: this.dateCreated,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      timestamps: this.timestamps,
+    );
+  }
+
 }
