@@ -16,6 +16,34 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _isSearching = false;
+  TextEditingController _searchController = TextEditingController();
+  ScrollController _scrollController = ScrollController();
+  bool _isAtTop = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels == 0 && !_isAtTop) {
+        setState(() {
+          _isAtTop = true;
+        });
+      } else if (_scrollController.position.pixels > 0 && _isAtTop) {
+        setState(() {
+          _isAtTop = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   void _showNewRecordDialog(BuildContext context) {
     TextEditingController titleController = TextEditingController();
     TextEditingController episodeController = TextEditingController();
@@ -64,6 +92,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
                 decoration: InputDecoration(labelText: "Select Collection"),
               ),
+              SizedBox(height: 10),
+              TextField(
+                controller: notesController,
+                decoration: InputDecoration(labelText: "Notes"),
+                maxLines: 3,
+              ),
             ],
           ),
           actions: [
@@ -98,6 +132,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     content: Text('Record created successfully!'),
                     duration: Duration(seconds: 2),
                   ),
+                );
+
+                _scrollController.animateTo(
+                  0,
+                  duration: Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
                 );
 
                 Navigator.pop(context);
@@ -246,11 +286,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     collectionProvider.addCollection(newCollection);
 
                     ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Collection created successfully!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                      SnackBar(
+                        content: Text('Collection created successfully!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
 
                     Navigator.pop(context);
                   },
@@ -263,9 +303,6 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-
-  bool _isSearching = false;
-  TextEditingController _searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -324,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     collectionProvider.updateSearchQuery(
                       '',
                       recordProvider.records,
-                    ); // Pass all records here
+                    ); 
                   },
                 )
                 : null,
@@ -494,7 +531,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     right: 16,
                     bottom: 6,
                   ),
-
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -527,141 +563,177 @@ class _HomeScreenState extends State<HomeScreen> {
                         ...recordProvider.filteredRecords,
                       ]..sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
 
-                      return ListView.builder(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: sortedRecords.length,
-                        itemBuilder: (context, index) {
-                          final record = sortedRecords[index];
+                      return Stack(
+                        children: [
+                          ListView.builder(
+                            controller: _scrollController,
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: sortedRecords.length,
+                            itemBuilder: (context, index) {
+                              final record = sortedRecords[index];
 
-                          final Collection? collection =
-                              record.collectionId != null
-                                  ? collectionProvider.filteredCollections
-                                      .firstWhere(
-                                        (c) => c.id == record.collectionId,
-                                        orElse:
-                                            () => Collection(
-                                              id: -1,
-                                              name: "Unknown",
-                                              season: 0,
-                                              thumbnail: "",
-                                            ),
-                                      )
-                                  : null;
+                              final Collection? collection =
+                                  record.collectionId != null
+                                      ? collectionProvider.filteredCollections
+                                          .firstWhere(
+                                            (c) => c.id == record.collectionId,
+                                            orElse:
+                                                () => Collection(
+                                                  id: -1,
+                                                  name: "Unknown",
+                                                  season: 0,
+                                                  thumbnail: "",
+                                                ),
+                                          )
+                                      : null;
 
-                          return Padding(
-                            padding: EdgeInsets.symmetric(vertical: 6),
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) =>
-                                            RecordScreen(record: record),
-                                  ),
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(15),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 10,
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.shade200,
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 6),
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) =>
+                                                RecordScreen(record: record),
+                                      ),
+                                    );
+                                  },
                                   borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (collection?.thumbnail != null &&
-                                        collection!.thumbnail!.isNotEmpty)
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.file(
-                                          File(collection.thumbnail!),
-                                          width: 60,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    else
-                                      Container(
-                                        width: 60,
-                                        height: 60,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade400,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          Icons.image_not_supported,
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            record.name,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.headlineSmall?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black87,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            () {
-                                              if (collection != null) {
-                                                final season =
-                                                    collection.season != null &&
-                                                            collection.season !=
-                                                                0
-                                                        ? "S${collection.season}"
-                                                        : "";
-                                                final episode =
-                                                    record.episode != null
-                                                        ? "Episode ${record.episode}"
-                                                        : "";
-                                                final title = [season, episode]
-                                                    .where((s) => s.isNotEmpty)
-                                                    .join(", ");
-                                                final collectionName =
-                                                    collection.name;
-                                                return "$title${title.isNotEmpty ? "  |  " : ""}$collectionName";
-                                              } else {
-                                                final episode =
-                                                    record.episode != null
-                                                        ? "Episode ${record.episode}"
-                                                        : "";
-                                                return episode.isNotEmpty
-                                                    ? episode
-                                                    : "No Collection";
-                                              }
-                                            }(),
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.bodyMedium?.copyWith(
-                                              color: Colors.black54,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 10,
+                                      horizontal: 12,
                                     ),
-                                  ],
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade200,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (collection?.thumbnail != null &&
+                                            collection!.thumbnail!.isNotEmpty)
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            child: Image.file(
+                                              File(collection.thumbnail!),
+                                              width: 60,
+                                              height: 60,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        else
+                                          Container(
+                                            width: 60,
+                                            height: 60,
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade400,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              Icons.image_not_supported,
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                record.name,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .headlineSmall
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.black87,
+                                                      fontSize: 14,
+                                                    ),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                () {
+                                                  if (collection != null) {
+                                                    final season =
+                                                        collection.season !=
+                                                                    null &&
+                                                                collection
+                                                                        .season !=
+                                                                    0
+                                                            ? "S${collection.season}"
+                                                            : "";
+                                                    final episode =
+                                                        record.episode != null
+                                                            ? "Episode ${record.episode}"
+                                                            : "";
+                                                    final title = [
+                                                          season,
+                                                          episode,
+                                                        ]
+                                                        .where(
+                                                          (s) => s.isNotEmpty,
+                                                        )
+                                                        .join(", ");
+                                                    final collectionName =
+                                                        collection.name;
+                                                    return "$title${title.isNotEmpty ? "  |  " : ""}$collectionName";
+                                                  } else {
+                                                    final episode =
+                                                        record.episode != null
+                                                            ? "Episode ${record.episode}"
+                                                            : "";
+                                                    return episode.isNotEmpty
+                                                        ? episode
+                                                        : "No Collection";
+                                                  }
+                                                }(),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      color: Colors.black54,
+                                                      fontSize: 12,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
+                              );
+                            },
+                          ),
+                          if (!_isAtTop)
+                            Positioned(
+                              bottom:
+                                  16, 
+                              right:
+                                  20, 
+                              child: FloatingActionButton(
+                                onPressed: () {
+                                  _scrollController.animateTo(
+                                    0, 
+                                    duration: Duration(
+                                      milliseconds: 300,
+                                    ), 
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                                child: Icon(Icons.arrow_upward),
                               ),
                             ),
-                          );
-                        },
+                        ],
                       );
                     },
                   ),
