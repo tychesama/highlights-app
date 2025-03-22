@@ -113,151 +113,183 @@ class CollectionInfoScreen extends StatelessWidget {
       Navigator.of(context).pop();
     }
   }
+
   void _editRecord(BuildContext context, Record record, int? collectionId) {
-  TextEditingController titleController = TextEditingController(
-    text: record.name,
-  );
-  TextEditingController episodeController = TextEditingController(
-    text: record.episode?.toString() ?? '',
-  );
-  TextEditingController notesController = TextEditingController(
-    text: record.notes,
-  );
+    TextEditingController titleController = TextEditingController(
+      text: record.name,
+    );
+    TextEditingController episodeController = TextEditingController(
+      text: record.episode?.toString() ?? '',
+    );
+    TextEditingController notesController = TextEditingController(
+      text: record.notes,
+    );
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Row(
-          children: [
-            Text("Edit Record"),
-            Spacer(),
-            IconButton(
-              icon: Icon(Icons.delete_forever, color: Colors.red),
-              onPressed: () async {
-                Navigator.pop(context);
+    showDialog(
+      context: context,
+      builder: (editDialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Text("Edit Record"),
+              Spacer(),
+              IconButton(
+                icon: Icon(Icons.delete_forever, color: Colors.red),
+                onPressed: () async {
+                  final confirmDelete = await showDialog<bool>(
+                    context: context,
+                    builder:
+                        (context) => AlertDialog(
+                          title: Text("Confirm Deletion"),
+                          content: Text(
+                            "Are you sure you want to permanently delete this record?",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text("Cancel"),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text(
+                                "Delete",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                  );
 
-                final confirmDelete = await showDialog<bool>(
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: Text("Confirm Deletion"),
-                      content: Text("Are you sure you want to permanently delete this record?"),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: Text("Cancel"),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: Text("Delete", style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
+                  if (confirmDelete == true) {
+                    final recordProvider = Provider.of<RecordProvider>(
+                      editDialogContext,
+                      listen: false,
                     );
-                  },
+                    await recordProvider.deleteRecord(record);
+
+                    ScaffoldMessenger.of(editDialogContext).showSnackBar(
+                      SnackBar(
+                        content: Text('Record deleted permanently!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+
+                    // Close the edit dialog after deleting
+                    Navigator.pop(editDialogContext);
+                  }
+                },
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: "Enter title"),
+              ),
+              TextField(
+                controller: episodeController,
+                decoration: InputDecoration(labelText: "Episode Number"),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: notesController,
+                decoration: InputDecoration(labelText: "Notes"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(editDialogContext),
+              child: Text("Cancel"),
+            ),
+            // TextButton(
+            //   onPressed: () async {
+            //     final confirmRemove = await showDialog<bool>(
+            //       context: context,
+            //       builder:
+            //           (dialogContext) => AlertDialog(
+            //             title: Text("Remove from Collection"),
+            //             content: Text(
+            //               "Are you sure you want to remove this record from the collection?",
+            //             ),
+            //             actions: [
+            //               TextButton(
+            //                 onPressed:
+            //                     () => Navigator.pop(dialogContext, false),
+            //                 child: Text("Cancel"),
+            //               ),
+            //               TextButton(
+            //                 onPressed: () => Navigator.pop(dialogContext, true),
+            //                 child: Text(
+            //                   "Remove",
+            //                   style: TextStyle(color: Colors.orange),
+            //                 ),
+            //               ),
+            //             ],
+            //           ),
+            //     );
+
+            //     if (confirmRemove == true) {
+            //       _removeFromCollection(context, record);
+            //       Navigator.pop(
+            //         context,
+            //       ); // Close the edit dialog after removing
+            //     }
+            //   },
+            //   child: Text("Remove"),
+            //   style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            // ),
+            ElevatedButton(
+              onPressed: () {
+                final updatedRecord = record.copyWith(
+                  name: titleController.text,
+                  episode: int.tryParse(episodeController.text),
+                  notes: notesController.text,
+                  collectionId: collectionId,
+                  lastUpdated: DateTime.now(),
                 );
 
-                if (confirmDelete == true) {
-                  final recordProvider = Provider.of<RecordProvider>(
-                    context,
-                    listen: false,
-                  );
+                final recordProvider = Provider.of<RecordProvider>(
+                  editDialogContext,
+                  listen: false,
+                );
+                recordProvider.updateRecord(updatedRecord);
 
-                  await recordProvider.deleteRecord(record);
+                ScaffoldMessenger.of(editDialogContext).showSnackBar(
+                  SnackBar(
+                    content: Text('Record updated and added to collection!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Record deleted permanently!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
+                Navigator.pop(editDialogContext);
               },
+              child: Text("Edit"),
             ),
           ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: InputDecoration(labelText: "Enter title"),
-            ),
-            TextField(
-              controller: episodeController,
-              decoration: InputDecoration(labelText: "Episode Number"),
-              keyboardType: TextInputType.number,
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: notesController,
-              decoration: InputDecoration(labelText: "Notes"),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              _removeFromCollection(context, record);
+        );
+      },
+    );
+  }
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Record removed from collection!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+  void _removeFromCollection(BuildContext context, Record record) {
+  final recordProvider = Provider.of<RecordProvider>(context, listen: false);
 
-              Navigator.pop(context);
-            },
-            child: Text("Remove"),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.orange,
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final updatedRecord = record.copyWith(
-                name: titleController.text,
-                episode: int.tryParse(episodeController.text),
-                notes: notesController.text,
-                collectionId: collectionId,
-                lastUpdated: DateTime.now(),
-              );
+  final updatedRecord = record.copyWith(collectionId: null, lastUpdated: DateTime.now());
 
-              final recordProvider = Provider.of<RecordProvider>(
-                context,
-                listen: false,
-              );
+  recordProvider.updateRecord(updatedRecord);
 
-              recordProvider.updateRecord(updatedRecord);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Record updated and added to collection!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-
-              Navigator.pop(context);
-            },
-            child: Text("Edit"),
-          ),
-        ],
-      );
-    },
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Record removed from collection!'),
+      duration: Duration(seconds: 2),
+    ),
   );
 }
-  void _removeFromCollection(BuildContext context, Record record) {
-    final recordProvider = Provider.of<RecordProvider>(context, listen: false);
 
-    final updatedRecord = record.copyWith(collectionId: null);
-
-    recordProvider.updateRecord(updatedRecord);
-  }
 
   void _addToCollection(
     Record record,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:highlight_marker/screens/main_screen.dart';
 import 'package:provider/provider.dart';
 import 'providers/record_provider.dart';
 import 'providers/collection_provider.dart';
@@ -48,7 +49,7 @@ class MyApp extends StatelessWidget {
           onError: Colors.white,
         ),
       ),
-      home: HomeScreen(),
+      home: MainScreen(),
       navigatorKey: NavigationService.navigatorKey,
     );
   }

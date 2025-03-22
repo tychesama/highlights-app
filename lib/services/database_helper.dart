@@ -208,6 +208,16 @@ class DatabaseHelper {
         .toList();
   }
 
+  Future<void> clearAllRecords() async {
+    final db = await database;
+    await db.delete('records');
+  }
+
+  Future<void> clearAllCollections() async {
+  final db = await database;
+  await db.delete('collections');
+}
+
   Future<void> viewAllData() async {
     final db = await database;
     final records = await db.query('records');
