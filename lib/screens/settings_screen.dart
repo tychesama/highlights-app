@@ -45,18 +45,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showCollections() async {
-  final collectionProvider = Provider.of<CollectionProvider>(context, listen: false);
-  final collections = await collectionProvider.fetchCollections(); // Await the future
+    final collectionProvider = Provider.of<CollectionProvider>(context, listen: false);
+    final collections = await collectionProvider.fetchCollections();
 
-  for (var collection in collections) {
-    print("Collection: ${collection.name}, Type: ${collection.type}");
+    for (var collection in collections) {
+      print("Collection: ${collection.name}, Type: ${collection.type}");
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Collections printed to console")),
+    );
   }
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text("Collections printed to console")),
-  );
-}
-
 
   Future<void> _clearRecords() async {
     final recordProvider = Provider.of<RecordProvider>(context, listen: false);
@@ -71,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final collectionProvider = Provider.of<CollectionProvider>(context, listen: false);
 
     await recordProvider.clearAllRecords();
-    await collectionProvider.clearAllCollections(); // Implement this method
+    await collectionProvider.clearAllCollections();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("All records and collections deleted!")),
@@ -79,7 +78,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _openImportExportScreen() {
-    
+    // Navigate to Import/Export Management screen (to be implemented)
+  }
+
+  void _showAboutDialog() {
+    showAboutDialog(
+      context: context,
+      applicationName: "Highlights",
+      applicationVersion: "1.0.0",
+      applicationLegalese: "© 2025 Highlights App",
+    );
+  }
+
+  void _openHelp() {
+    // Implement Help screen navigation
+  }
+
+  void _openContactUs() {
+    // Implement Contact Us screen navigation
   }
 
   @override
@@ -119,6 +135,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _darkMode,
                   onChanged: _updateTheme,
                 ),
+                Divider(), // Separates data options from help & about
+
                 ListTile(
                   title: Text("Delete Records"),
                   trailing: Icon(Icons.delete, color: Colors.red),
@@ -128,6 +146,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text("Delete All Data"),
                   trailing: Icon(Icons.warning, color: Colors.redAccent),
                   onTap: _clearAllData,
+                ),
+                Divider(),
+
+                ListTile(
+                  title: Text("Help"),
+                  trailing: Icon(Icons.help, color: Colors.blueGrey),
+                  onTap: _openHelp,
+                ),
+                ListTile(
+                  title: Text("Contact Us"),
+                  trailing: Icon(Icons.contact_mail, color: Colors.teal),
+                  onTap: _openContactUs,
+                ),
+                ListTile(
+                  title: Text("About"),
+                  trailing: Icon(Icons.info, color: Colors.deepPurple),
+                  onTap: _showAboutDialog,
+                ),
+                ListTile(
+                  title: Text("Version 1.0.0"),
+                  trailing: Icon(Icons.verified, color: Colors.green),
+                  onTap: _showAboutDialog,
                 ),
               ],
             ),

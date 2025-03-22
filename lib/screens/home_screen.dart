@@ -45,6 +45,100 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _editRecord(BuildContext context, Record record) {
+  TextEditingController titleController = TextEditingController(text: record.name);
+  TextEditingController episodeController = TextEditingController(text: record.episode?.toString() ?? '');
+  TextEditingController notesController = TextEditingController(text: record.notes);
+  int? selectedCollectionId = record.collectionId;
+
+  final collectionProvider = Provider.of<CollectionProvider>(context, listen: false);
+  final collections = collectionProvider.filteredCollections;
+
+  showDialog(
+    context: context,
+    builder: (editDialogContext) { // Store context for the edit dialog
+      return AlertDialog(
+        title: Row(
+          children: [
+            Text("Edit Record"),
+            Spacer(),
+            IconButton(
+              icon: Icon(Icons.delete_forever, color: Colors.red),
+              onPressed: () async {
+                Navigator.of(editDialogContext, rootNavigator: true).pop(); // Close edit modal
+
+                final confirmDelete = await showDialog<bool>(
+                  context: editDialogContext,
+                  builder: (confirmDialogContext) => AlertDialog(
+                    title: Text("Confirm Deletion"),
+                    content: Text("Are you sure you want to delete this record?"),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(confirmDialogContext, false),
+                        child: Text("Cancel"),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(confirmDialogContext, true),
+                        child: Text("Delete", style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmDelete == true) {
+                  final recordProvider = Provider.of<RecordProvider>(context, listen: false);
+                  await recordProvider.deleteRecord(record);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Record deleted!')));
+                }
+              },
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: titleController, decoration: InputDecoration(labelText: "Title")),
+            TextField(controller: episodeController, decoration: InputDecoration(labelText: "Episode"), keyboardType: TextInputType.number),
+            DropdownButtonFormField<int>(
+              value: selectedCollectionId,
+              decoration: InputDecoration(labelText: "Collection"),
+              items: collections.map((collection) {
+                return DropdownMenuItem<int>(
+                  value: collection.id,
+                  child: Text(collection.name),
+                );
+              }).toList(),
+              onChanged: (value) => selectedCollectionId = value,
+            ),
+            TextField(controller: notesController, decoration: InputDecoration(labelText: "Notes")),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(editDialogContext), child: Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              final updatedRecord = record.copyWith(
+                name: titleController.text,
+                episode: int.tryParse(episodeController.text),
+                notes: notesController.text,
+                collectionId: selectedCollectionId,
+                lastUpdated: DateTime.now(),
+              );
+
+              final recordProvider = Provider.of<RecordProvider>(context, listen: false);
+              recordProvider.updateRecord(updatedRecord);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Record updated!')));
+              Navigator.pop(editDialogContext);
+            },
+            child: Text("Save"),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
   void _showNewRecordDialog(BuildContext context) {
     TextEditingController titleController = TextEditingController();
     TextEditingController episodeController = TextEditingController();
@@ -590,7 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                               return Padding(
                                 padding: EdgeInsets.symmetric(vertical: 6),
-                                child: InkWell(
+                                child: GestureDetector(
                                   onTap: () {
                                     Navigator.push(
                                       context,
@@ -601,114 +695,119 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     );
                                   },
-                                  borderRadius: BorderRadius.circular(15),
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 10,
-                                      horizontal: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.shade200,
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (collection?.thumbnail != null &&
-                                            collection!.thumbnail!.isNotEmpty)
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            child: Image.file(
-                                              File(collection.thumbnail!),
-                                              width: 60,
-                                              height: 60,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          )
-                                        else
-                                          Container(
-                                            width: 60,
-                                            height: 60,
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey.shade400,
+                                  onLongPress: () {
+                                    // Trigger edit functionality here
+                                    _editRecord(context, record);
+                                  },
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(15),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 10,
+                                        horizontal: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade200,
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (collection?.thumbnail != null &&
+                                              collection!.thumbnail!.isNotEmpty)
+                                            ClipRRect(
                                               borderRadius:
                                                   BorderRadius.circular(8),
+                                              child: Image.file(
+                                                File(collection.thumbnail!),
+                                                width: 60,
+                                                height: 60,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            )
+                                          else
+                                            Container(
+                                              width: 60,
+                                              height: 60,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade400,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Icon(
+                                                Icons.image_not_supported,
+                                                color: Colors.white70,
+                                              ),
                                             ),
-                                            child: Icon(
-                                              Icons.image_not_supported,
-                                              color: Colors.white70,
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  record.name,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .headlineSmall
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.black87,
+                                                        fontSize: 14,
+                                                      ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  () {
+                                                    if (collection != null) {
+                                                      final season =
+                                                          collection.season !=
+                                                                      null &&
+                                                                  collection
+                                                                          .season !=
+                                                                      0
+                                                              ? "S${collection.season}"
+                                                              : "";
+                                                      final episode =
+                                                          record.episode != null
+                                                              ? "Episode ${record.episode}"
+                                                              : "";
+                                                      final title = [
+                                                            season,
+                                                            episode,
+                                                          ]
+                                                          .where(
+                                                            (s) => s.isNotEmpty,
+                                                          )
+                                                          .join(", ");
+                                                      final collectionName =
+                                                          collection.name;
+                                                      return "$title${title.isNotEmpty ? "  |  " : ""}$collectionName";
+                                                    } else {
+                                                      final episode =
+                                                          record.episode != null
+                                                              ? "Episode ${record.episode}"
+                                                              : "";
+                                                      return episode.isNotEmpty
+                                                          ? episode
+                                                          : "No Collection";
+                                                    }
+                                                  }(),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        color: Colors.black54,
+                                                        fontSize: 12,
+                                                      ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                record.name,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .headlineSmall
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Colors.black87,
-                                                      fontSize: 14,
-                                                    ),
-                                              ),
-                                              SizedBox(height: 4),
-                                              Text(
-                                                () {
-                                                  if (collection != null) {
-                                                    final season =
-                                                        collection.season !=
-                                                                    null &&
-                                                                collection
-                                                                        .season !=
-                                                                    0
-                                                            ? "S${collection.season}"
-                                                            : "";
-                                                    final episode =
-                                                        record.episode != null
-                                                            ? "Episode ${record.episode}"
-                                                            : "";
-                                                    final title = [
-                                                          season,
-                                                          episode,
-                                                        ]
-                                                        .where(
-                                                          (s) => s.isNotEmpty,
-                                                        )
-                                                        .join(", ");
-                                                    final collectionName =
-                                                        collection.name;
-                                                    return "$title${title.isNotEmpty ? "  |  " : ""}$collectionName";
-                                                  } else {
-                                                    final episode =
-                                                        record.episode != null
-                                                            ? "Episode ${record.episode}"
-                                                            : "";
-                                                    return episode.isNotEmpty
-                                                        ? episode
-                                                        : "No Collection";
-                                                  }
-                                                }(),
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium
-                                                    ?.copyWith(
-                                                      color: Colors.black54,
-                                                      fontSize: 12,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -740,7 +839,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      
     );
   }
 }

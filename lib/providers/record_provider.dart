@@ -43,8 +43,11 @@ class RecordProvider extends ChangeNotifier {
       (record) => record.id == updatedRecord.id,
     );
     if (index != -1) {
+      print("Updating record ${_records[index].id}");
       _records[index] = updatedRecord;
       notifyListeners();
+    } else {
+      print("Record not found!");
     }
   }
 
@@ -71,9 +74,10 @@ class RecordProvider extends ChangeNotifier {
   }
 
   Future<void> deleteRecord(Record record) async {
-  await DatabaseHelper.instance.deleteRecord(record.id!);
-  await fetchRecords(); // Refresh all records
-}
+    await DatabaseHelper.instance.deleteRecord(record.id!);
+    await fetchRecords(); // Refresh all records
+    notifyListeners(); // Ensure UI updates
+  }
 
   Future<void> clearAllRecords() async {
     await DatabaseHelper.instance.clearAllRecords();
@@ -84,7 +88,6 @@ class RecordProvider extends ChangeNotifier {
   List<Record> getAllRecords() {
     return List.unmodifiable(_records);
   }
-
 
   bool get isPlaying => _isPlaying;
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
