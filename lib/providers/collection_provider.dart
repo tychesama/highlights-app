@@ -60,8 +60,15 @@ class CollectionProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchCollections() async {
+  Future<List<Collection>> fetchCollections() async {
     _collections = await DatabaseHelper.instance.getCollections();
+    notifyListeners();
+    return _collections;
+  }
+
+  Future<void> clearAllCollections() async {
+    await DatabaseHelper.instance.clearAllCollections();
+    _collections.clear();
     notifyListeners();
   }
 

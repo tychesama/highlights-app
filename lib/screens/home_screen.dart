@@ -9,6 +9,7 @@ import 'record_screen.dart';
 import 'collection_info_screen.dart';
 import 'dart:io';
 import '../services/database_helper.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -361,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     collectionProvider.updateSearchQuery(
                       '',
                       recordProvider.records,
-                    ); 
+                    );
                   },
                 )
                 : null,
@@ -716,17 +717,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           if (!_isAtTop)
                             Positioned(
-                              bottom:
-                                  16, 
-                              right:
-                                  20, 
+                              bottom: 16,
+                              right: 20,
                               child: FloatingActionButton(
                                 onPressed: () {
                                   _scrollController.animateTo(
-                                    0, 
-                                    duration: Duration(
-                                      milliseconds: 300,
-                                    ), 
+                                    0,
+                                    duration: Duration(milliseconds: 300),
                                     curve: Curves.easeInOut,
                                   );
                                 },
@@ -743,44 +740,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomAppBar(
-        color: Colors.transparent,
-        child: Padding(
-          padding: EdgeInsets.all(4.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    print('Home pressed');
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    height: 60,
-                    color: Colors.transparent,
-                    child: Icon(Icons.house),
-                  ),
-                ),
-              ),
-
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    DatabaseHelper.instance.viewAllData();
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    height: 60,
-                    color: Colors.transparent,
-                    child: Icon(Icons.settings),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      
     );
   }
 }

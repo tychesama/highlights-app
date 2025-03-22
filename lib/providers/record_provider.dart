@@ -75,6 +75,16 @@ class RecordProvider extends ChangeNotifier {
   await fetchRecords(); // Refresh all records
 }
 
+  Future<void> clearAllRecords() async {
+    await DatabaseHelper.instance.clearAllRecords();
+    _records.clear();
+    notifyListeners();
+  }
+
+  List<Record> getAllRecords() {
+    return List.unmodifiable(_records);
+  }
+
 
   bool get isPlaying => _isPlaying;
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
