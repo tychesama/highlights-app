@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/collection.dart';
 import '../services/database_helper.dart';
-import 'record_provider.dart';
 import '../models/record.dart';
-
 
 class CollectionProvider with ChangeNotifier {
   List<Collection> _collections = [];
@@ -20,33 +18,33 @@ class CollectionProvider with ChangeNotifier {
     notifyListeners();
   }
 
-
-
   void updateSearchQuery(String query, List<Record> allRecords) {
     _searchQuery = query;
     final lowerQuery = query.toLowerCase();
 
-    _filtered = _collections.where((collection) {
-      final collectionMatches = collection.name.toLowerCase().contains(lowerQuery);
+    _filtered =
+        _collections.where((collection) {
+          final collectionMatches = collection.name.toLowerCase().contains(
+            lowerQuery,
+          );
 
-      final recordMatches = allRecords.any((record) =>
-          record.collectionId == collection.id &&
-          record.name.toLowerCase().contains(lowerQuery));
+          final recordMatches = allRecords.any(
+            (record) =>
+                record.collectionId == collection.id &&
+                record.name.toLowerCase().contains(lowerQuery),
+          );
 
-      return collectionMatches || recordMatches;
-    }).toList();
+          return collectionMatches || recordMatches;
+        }).toList();
 
     notifyListeners();
   }
-  
+
   void clearSearch() {
     _searchQuery = '';
     _filtered = [];
     notifyListeners();
   }
-
-
-
 
   CollectionProvider() {
     fetchCollections();
@@ -75,6 +73,16 @@ class CollectionProvider with ChangeNotifier {
   Future<void> deleteCollection(int id) async {
     await DatabaseHelper.instance.deleteCollection(id);
     fetchCollections();
+  }
+
+  Future<void> updateCollection(Collection updatedCollection) async {
+    await DatabaseHelper.instance.updateCollection(updatedCollection);
+
+    final index = _collections.indexWhere((c) => c.id == updatedCollection.id);
+    if (index != -1) {
+      _collections[index] = updatedCollection;
+      notifyListeners();
+    }
   }
 
   void updateCollectionLastUpdated(int collectionId, DateTime newTime) {

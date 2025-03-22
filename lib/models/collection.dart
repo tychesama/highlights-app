@@ -49,4 +49,27 @@ class Collection {
       thumbnail: map['thumbnail'], 
     );
   }
+
+  Collection copyWith({
+    int? id,
+    String? name,
+    String? description,
+    int? season,
+    String? type,
+    DateTime? dateCreated,
+    DateTime? lastUpdated,
+    String? thumbnail,
+  }) {
+    return Collection(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      season: season ?? this.season,
+      type: type ?? this.type,
+      dateCreated: dateCreated ?? this.dateCreated,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      thumbnail: thumbnail ?? this.thumbnail,
+    );
+  }
+
 }

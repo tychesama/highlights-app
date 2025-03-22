@@ -93,6 +93,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
                 recordProvider.addRecord(newRecord);
 
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Record created successfully!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+
                 Navigator.pop(context);
               },
               child: Text("OK"),
@@ -118,13 +125,13 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
     String? thumbnailPath;
 
-    Future<void> _pickThumbnail() async {
-      final ImagePicker _picker = ImagePicker();
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    void _pickThumbnail() async {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-      if (image != null) {
+      if (pickedFile != null) {
         setState(() {
-          thumbnailPath = image.path;
+          thumbnailPath = pickedFile.path;
         });
       }
     }
@@ -132,87 +139,126 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text("New Collection"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(labelText: "Collection Name"),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("New Collection"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(labelText: "Collection Name"),
+                  ),
+                  SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: selectedType,
+                    onChanged: (newValue) {
+                      setState(() {
+                        selectedType = newValue!;
+                      });
+                    },
+                    items:
+                        types.map((type) {
+                          return DropdownMenuItem<String>(
+                            value: type,
+                            child: Text(type),
+                          );
+                        }).toList(),
+                    decoration: InputDecoration(labelText: "Select Type"),
+                  ),
+                  SizedBox(height: 10),
+                  TextField(
+                    controller: seasonController,
+                    decoration: InputDecoration(labelText: "Season (Optional)"),
+                    keyboardType: TextInputType.number,
+                  ),
+                  SizedBox(height: 10),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(labelText: "Description"),
+                    maxLines: 3,
+                  ),
+                  SizedBox(height: 10),
+                  if (thumbnailPath == null)
+                    ElevatedButton(
+                      onPressed: () async {
+                        final pickedFile = await ImagePicker().pickImage(
+                          source: ImageSource.gallery,
+                        );
+                        if (pickedFile != null) {
+                          setState(() {
+                            thumbnailPath = pickedFile.path;
+                          });
+                        }
+                      },
+                      child: Text("Select Thumbnail"),
+                    ),
+                  if (thumbnailPath != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: GestureDetector(
+                        onTap: () async {
+                          final pickedFile = await ImagePicker().pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (pickedFile != null) {
+                            setState(() {
+                              thumbnailPath = pickedFile.path;
+                            });
+                          }
+                        },
+                        child: Image.file(
+                          File(thumbnailPath!),
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: selectedType,
-                onChanged: (newValue) {
-                  selectedType = newValue!;
-                },
-                items:
-                    types.map((type) {
-                      return DropdownMenuItem<String>(
-                        value: type,
-                        child: Text(type),
-                      );
-                    }).toList(),
-                decoration: InputDecoration(labelText: "Select Type"),
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: seasonController,
-                decoration: InputDecoration(labelText: "Season (Optional)"),
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(height: 10),
-              TextField(
-                controller: descriptionController,
-                decoration: InputDecoration(labelText: "Description"),
-                maxLines: 3,
-              ),
-              SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: _pickThumbnail,
-                child: Text("Select Thumbnail"),
-              ),
-              if (thumbnailPath != null)
-                Image.file(
-                  File(thumbnailPath!),
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel"),
                 ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final collectionProvider = Provider.of<CollectionProvider>(
-                  context,
-                  listen: false,
+                ElevatedButton(
+                  onPressed: () {
+                    final collectionProvider = Provider.of<CollectionProvider>(
+                      context,
+                      listen: false,
+                    );
+
+                    Collection newCollection = Collection(
+                      name:
+                          nameController.text.isNotEmpty
+                              ? nameController.text
+                              : "Untitled",
+                      type: selectedType,
+                      season: int.tryParse(seasonController.text),
+                      description: descriptionController.text,
+                      dateCreated: DateTime.now(),
+                      lastUpdated: DateTime.now(),
+                      thumbnail: thumbnailPath,
+                    );
+
+                    collectionProvider.addCollection(newCollection);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Collection created successfully!'),
+                    duration: Duration(seconds: 2),
+                  ),
                 );
 
-                Collection newCollection = Collection(
-                  name:
-                      nameController.text.isNotEmpty
-                          ? nameController.text
-                          : "Untitled",
-                  type: selectedType,
-                  season: int.tryParse(seasonController.text) ?? 1,
-                  description: descriptionController.text,
-                  dateCreated: DateTime.now(),
-                  lastUpdated: DateTime.now(),
-                  thumbnail: thumbnailPath,
-                );
-
-                collectionProvider.addCollection(newCollection);
-                Navigator.pop(context);
-              },
-              child: Text("OK"),
-            ),
-          ],
+                    Navigator.pop(context);
+                  },
+                  child: Text("OK"),
+                ),
+              ],
+            );
+          },
         );
       },
     );

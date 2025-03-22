@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/collection.dart';
-import '../models/record.dart';
 import '../providers/record_provider.dart';
+import '../providers/collection_provider.dart';
+import '../sheets/edit_collection_sheet.dart';
 import 'record_screen.dart';
 import 'dart:io';
 
@@ -12,10 +13,136 @@ class CollectionInfoScreen extends StatelessWidget {
   const CollectionInfoScreen({Key? key, required this.collection})
     : super(key: key);
 
+  void _confirmDelete(BuildContext context) async {
+    bool deleteRecords = false;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Delete Collection'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Are you sure you want to delete this collection?'),
+                  SizedBox(height: 12),
+                  CheckboxListTile(
+                    title: Text('Delete all records'),
+                    value: deleteRecords,
+                    onChanged: (value) {
+                      setState(() {
+                        deleteRecords = value ?? false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  child: Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(null),
+                ),
+                TextButton(
+                  child: Text('Delete', style: TextStyle(color: Colors.red)),
+                  onPressed: () => Navigator.of(context).pop(deleteRecords),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirm != null) {
+      final collectionProvider = Provider.of<CollectionProvider>(
+        context,
+        listen: false,
+      );
+
+      if (confirm == true) {
+        final recordProvider = Provider.of<RecordProvider>(
+          context,
+          listen: false,
+        );
+        final recordsToDelete =
+            recordProvider.records
+                .where((record) => record.collectionId == collection.id)
+                .toList();
+
+        for (final record in recordsToDelete) {
+          await recordProvider.deleteRecord(record.id!);
+        }
+
+        await collectionProvider.deleteCollection(collection.id!);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Collection and records deleted.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        await collectionProvider.deleteCollection(collection.id!);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Collection deleted.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      final recordProvider = Provider.of<RecordProvider>(
+        context,
+        listen: false,
+      );
+      collectionProvider.updateSearchQuery('', recordProvider.records);
+      recordProvider.updateSearchQuery('');
+
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final collectionProvider = Provider.of<CollectionProvider>(context);
+    final latestCollection = collectionProvider.filteredCollections.firstWhere(
+      (c) => c.id == collection.id,
+      orElse: () => collection,
+    );
+
     return Scaffold(
-      appBar: AppBar(title: Text(collection.name)),
+      appBar: AppBar(
+        title: Text(collection.name),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'edit') {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                  ),
+                  builder:
+                      (_) => EditCollectionSheet(collection: latestCollection),
+                );
+              } else if (value == 'delete') {
+                _confirmDelete(context);
+              }
+            },
+            itemBuilder:
+                (context) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Flexible(
@@ -27,10 +154,10 @@ class CollectionInfoScreen extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child:
-                        collection.thumbnail != null &&
-                                collection.thumbnail!.isNotEmpty
+                        latestCollection.thumbnail != null &&
+                                latestCollection.thumbnail!.isNotEmpty
                             ? Image.file(
-                              File(collection.thumbnail!),
+                              File(latestCollection.thumbnail!),
                               width: 150,
                               height: 150,
                               fit: BoxFit.cover,
@@ -49,7 +176,7 @@ class CollectionInfoScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          collection.name,
+                          latestCollection.name,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -57,23 +184,25 @@ class CollectionInfoScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Type: ${collection.type}',
+                          'Type: ${latestCollection.type}',
                           style: TextStyle(fontSize: 16),
                         ),
-                        Text(
-                          'Season: ${collection.season}',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        if (latestCollection.season != null)
+                          Text(
+                            'Season: ${latestCollection.season}',
+                            style: TextStyle(fontSize: 16),
+                          ),
+
                         SizedBox(height: 8),
                         Text(
-                          collection.description ?? 'No description',
+                          latestCollection.description ?? 'No description',
                           style: TextStyle(fontSize: 14),
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'Created on: ${collection.dateCreated.toLocal().toString().split(" ").first}',
+                          'Created on: ${latestCollection.dateCreated.toLocal().toString().split(" ").first}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[700],
@@ -135,10 +264,12 @@ class CollectionInfoScreen extends StatelessWidget {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
                                 child:
-                                    collection.thumbnail != null &&
-                                            collection.thumbnail!.isNotEmpty
+                                    latestCollection.thumbnail != null &&
+                                            latestCollection
+                                                .thumbnail!
+                                                .isNotEmpty
                                         ? Image.file(
-                                          File(collection.thumbnail!),
+                                          File(latestCollection.thumbnail!),
                                           width: 60,
                                           height: 60,
                                           fit: BoxFit.cover,
