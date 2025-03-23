@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import '../providers/record_provider.dart';
-import '../providers/collection_provider.dart';
-import '../models/record.dart';
-import '../models/collection.dart';
-import 'record_screen.dart';
-import 'collection_info_screen.dart';
+import '../../providers/record_provider.dart';
+import '../../providers/collection_provider.dart';
+import '../../models/record.dart';
+import '../../models/collection.dart';
+import '../record_screen/record_screen.dart';
+import '../collection_info_screen.dart';
 import 'dart:io';
-import '../services/database_helper.dart';
+import '../../services/database_helper.dart';
 import 'settings_screen.dart';
+import '../record_screen/main_record_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -46,98 +47,146 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _editRecord(BuildContext context, Record record) {
-  TextEditingController titleController = TextEditingController(text: record.name);
-  TextEditingController episodeController = TextEditingController(text: record.episode?.toString() ?? '');
-  TextEditingController notesController = TextEditingController(text: record.notes);
-  int? selectedCollectionId = record.collectionId;
+    TextEditingController titleController = TextEditingController(
+      text: record.name,
+    );
+    TextEditingController episodeController = TextEditingController(
+      text: record.episode?.toString() ?? '',
+    );
+    TextEditingController notesController = TextEditingController(
+      text: record.notes,
+    );
+    int? selectedCollectionId = record.collectionId;
 
-  final collectionProvider = Provider.of<CollectionProvider>(context, listen: false);
-  final collections = collectionProvider.filteredCollections;
+    final collectionProvider = Provider.of<CollectionProvider>(
+      context,
+      listen: false,
+    );
+    final collections = collectionProvider.filteredCollections;
 
-  showDialog(
-    context: context,
-    builder: (editDialogContext) { // Store context for the edit dialog
-      return AlertDialog(
-        title: Row(
-          children: [
-            Text("Edit Record"),
-            Spacer(),
-            IconButton(
-              icon: Icon(Icons.delete_forever, color: Colors.red),
-              onPressed: () async {
-                Navigator.of(editDialogContext, rootNavigator: true).pop(); // Close edit modal
+    showDialog(
+      context: context,
+      builder: (editDialogContext) {
+        // Store context for the edit dialog
+        return AlertDialog(
+          title: Row(
+            children: [
+              Text("Edit Record"),
+              Spacer(),
+              IconButton(
+                icon: Icon(Icons.delete_forever, color: Colors.red),
+                onPressed: () async {
+                  Navigator.of(
+                    editDialogContext,
+                    rootNavigator: true,
+                  ).pop(); // Close edit modal
 
-                final confirmDelete = await showDialog<bool>(
-                  context: editDialogContext,
-                  builder: (confirmDialogContext) => AlertDialog(
-                    title: Text("Confirm Deletion"),
-                    content: Text("Are you sure you want to delete this record?"),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(confirmDialogContext, false),
-                        child: Text("Cancel"),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(confirmDialogContext, true),
-                        child: Text("Delete", style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                );
+                  final confirmDelete = await showDialog<bool>(
+                    context: editDialogContext,
+                    builder:
+                        (confirmDialogContext) => AlertDialog(
+                          title: Text("Confirm Deletion"),
+                          content: Text(
+                            "Are you sure you want to delete this record?",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed:
+                                  () => Navigator.pop(
+                                    confirmDialogContext,
+                                    false,
+                                  ),
+                              child: Text("Cancel"),
+                            ),
+                            TextButton(
+                              onPressed:
+                                  () =>
+                                      Navigator.pop(confirmDialogContext, true),
+                              child: Text(
+                                "Delete",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                  );
 
-                if (confirmDelete == true) {
-                  final recordProvider = Provider.of<RecordProvider>(context, listen: false);
-                  await recordProvider.deleteRecord(record);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Record deleted!')));
-                }
-              },
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleController, decoration: InputDecoration(labelText: "Title")),
-            TextField(controller: episodeController, decoration: InputDecoration(labelText: "Episode"), keyboardType: TextInputType.number),
-            DropdownButtonFormField<int>(
-              value: selectedCollectionId,
-              decoration: InputDecoration(labelText: "Collection"),
-              items: collections.map((collection) {
-                return DropdownMenuItem<int>(
-                  value: collection.id,
-                  child: Text(collection.name),
-                );
-              }).toList(),
-              onChanged: (value) => selectedCollectionId = value,
-            ),
-            TextField(controller: notesController, decoration: InputDecoration(labelText: "Notes")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(editDialogContext), child: Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              final updatedRecord = record.copyWith(
-                name: titleController.text,
-                episode: int.tryParse(episodeController.text),
-                notes: notesController.text,
-                collectionId: selectedCollectionId,
-                lastUpdated: DateTime.now(),
-              );
-
-              final recordProvider = Provider.of<RecordProvider>(context, listen: false);
-              recordProvider.updateRecord(updatedRecord);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Record updated!')));
-              Navigator.pop(editDialogContext);
-            },
-            child: Text("Save"),
+                  if (confirmDelete == true) {
+                    final recordProvider = Provider.of<RecordProvider>(
+                      context,
+                      listen: false,
+                    );
+                    await recordProvider.deleteRecord(record);
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Record deleted!')));
+                  }
+                },
+              ),
+            ],
           ),
-        ],
-      );
-    },
-  );
-}
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: "Title"),
+              ),
+              TextField(
+                controller: episodeController,
+                decoration: InputDecoration(labelText: "Episode"),
+                keyboardType: TextInputType.number,
+              ),
+              DropdownButtonFormField<int>(
+                value: selectedCollectionId,
+                decoration: InputDecoration(labelText: "Collection"),
+                items:
+                    collections.map((collection) {
+                      return DropdownMenuItem<int>(
+                        value: collection.id,
+                        child: Text(collection.name),
+                      );
+                    }).toList(),
+                onChanged: (value) => selectedCollectionId = value,
+              ),
+              TextField(
+                controller: notesController,
+                decoration: InputDecoration(labelText: "Notes"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(editDialogContext),
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final updatedRecord = record.copyWith(
+                  name: titleController.text,
+                  episode: int.tryParse(episodeController.text),
+                  notes: notesController.text,
+                  collectionId: selectedCollectionId,
+                  lastUpdated: DateTime.now(),
+                );
 
+                final recordProvider = Provider.of<RecordProvider>(
+                  context,
+                  listen: false,
+                );
+                recordProvider.updateRecord(updatedRecord);
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Record updated!')));
+                Navigator.pop(editDialogContext);
+              },
+              child: Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void _showNewRecordDialog(BuildContext context) {
     TextEditingController titleController = TextEditingController();
@@ -278,80 +327,98 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, setState) {
             return AlertDialog(
               title: Text("New Collection"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(labelText: "Collection Name"),
+              content: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.7,
                   ),
-                  SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: selectedType,
-                    onChanged: (newValue) {
-                      setState(() {
-                        selectedType = newValue!;
-                      });
-                    },
-                    items:
-                        types.map((type) {
-                          return DropdownMenuItem<String>(
-                            value: type,
-                            child: Text(type),
-                          );
-                        }).toList(),
-                    decoration: InputDecoration(labelText: "Select Type"),
-                  ),
-                  SizedBox(height: 10),
-                  TextField(
-                    controller: seasonController,
-                    decoration: InputDecoration(labelText: "Season (Optional)"),
-                    keyboardType: TextInputType.number,
-                  ),
-                  SizedBox(height: 10),
-                  TextField(
-                    controller: descriptionController,
-                    decoration: InputDecoration(labelText: "Description"),
-                    maxLines: 3,
-                  ),
-                  SizedBox(height: 10),
-                  if (thumbnailPath == null)
-                    ElevatedButton(
-                      onPressed: () async {
-                        final pickedFile = await ImagePicker().pickImage(
-                          source: ImageSource.gallery,
-                        );
-                        if (pickedFile != null) {
-                          setState(() {
-                            thumbnailPath = pickedFile.path;
-                          });
-                        }
-                      },
-                      child: Text("Select Thumbnail"),
-                    ),
-                  if (thumbnailPath != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: GestureDetector(
-                        onTap: () async {
-                          final pickedFile = await ImagePicker().pickImage(
-                            source: ImageSource.gallery,
-                          );
-                          if (pickedFile != null) {
-                            setState(() {
-                              thumbnailPath = pickedFile.path;
-                            });
-                          }
-                        },
-                        child: Image.file(
-                          File(thumbnailPath!),
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: "Collection Name",
                         ),
                       ),
-                    ),
-                ],
+                      SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: selectedType,
+                        onChanged: (newValue) {
+                          setState(() {
+                            selectedType = newValue!;
+                          });
+                        },
+                        items:
+                            types.map((type) {
+                              return DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(type),
+                              );
+                            }).toList(),
+                        decoration: InputDecoration(labelText: "Select Type"),
+                      ),
+                      SizedBox(height: 10),
+                      TextField(
+                        controller: seasonController,
+                        decoration: InputDecoration(
+                          labelText: "Season (Optional)",
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      SizedBox(height: 10),
+                      TextField(
+                        controller: descriptionController,
+                        decoration: InputDecoration(
+                          labelText: "Description",
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 10,
+                          ),
+                        ),
+                        maxLines: 2,
+                      ),
+
+                      SizedBox(height: 10),
+                      if (thumbnailPath == null)
+                        ElevatedButton(
+                          onPressed: () async {
+                            final pickedFile = await ImagePicker().pickImage(
+                              source: ImageSource.gallery,
+                            );
+                            if (pickedFile != null) {
+                              setState(() {
+                                thumbnailPath = pickedFile.path;
+                              });
+                            }
+                          },
+                          child: Text("Select Thumbnail"),
+                        ),
+                      if (thumbnailPath != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: GestureDetector(
+                            onTap: () async {
+                              final pickedFile = await ImagePicker().pickImage(
+                                source: ImageSource.gallery,
+                              );
+                              if (pickedFile != null) {
+                                setState(() {
+                                  thumbnailPath = pickedFile.path;
+                                });
+                              }
+                            },
+                            child: Image.file(
+                              File(thumbnailPath!),
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
               actions: [
                 TextButton(
@@ -691,7 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       MaterialPageRoute(
                                         builder:
                                             (context) =>
-                                                RecordScreen(record: record),
+                                                MainRecordScreen(record: record, collection: collection),
                                       ),
                                     );
                                   },
@@ -747,7 +814,35 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  record.name,
+                                                  record.name.isNotEmpty &&
+                                                          record.name !=
+                                                              "Untitled"
+                                                      ? record.name
+                                                      : (() {
+                                                        final season =
+                                                            (collection?.season ??
+                                                                        0) >
+                                                                    0
+                                                                ? "S${collection!.season}"
+                                                                : "";
+                                                        final episode =
+                                                            record.episode !=
+                                                                    null
+                                                                ? "Episode ${record.episode}"
+                                                                : "";
+                                                        final title = [
+                                                              season,
+                                                              episode,
+                                                            ]
+                                                            .where(
+                                                              (s) =>
+                                                                  s.isNotEmpty,
+                                                            )
+                                                            .join(", ");
+                                                        return title.isNotEmpty
+                                                            ? title
+                                                            : "Untitled";
+                                                      })(),
                                                   style: Theme.of(context)
                                                       .textTheme
                                                       .headlineSmall
@@ -760,47 +855,52 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 ),
                                                 SizedBox(height: 4),
                                                 Text(
-                                                  () {
-                                                    if (collection != null) {
-                                                      final season =
-                                                          collection.season !=
-                                                                      null &&
-                                                                  collection
-                                                                          .season !=
-                                                                      0
-                                                              ? "S${collection.season}"
-                                                              : "";
-                                                      final episode =
-                                                          record.episode != null
-                                                              ? "Episode ${record.episode}"
-                                                              : "";
-                                                      final title = [
-                                                            season,
-                                                            episode,
-                                                          ]
-                                                          .where(
-                                                            (s) => s.isNotEmpty,
-                                                          )
-                                                          .join(", ");
-                                                      final collectionName =
-                                                          collection.name;
-                                                      return "$title${title.isNotEmpty ? "  |  " : ""}$collectionName";
-                                                    } else {
-                                                      final episode =
-                                                          record.episode != null
-                                                              ? "Episode ${record.episode}"
-                                                              : "";
-                                                      return episode.isNotEmpty
-                                                          ? episode
-                                                          : "No Collection";
-                                                    }
-                                                  }(),
+                                                  (() {
+                                                    final season =
+                                                        (collection?.season ??
+                                                                    0) >
+                                                                0
+                                                            ? "S${collection!.season}"
+                                                            : "";
+                                                    final episode =
+                                                        record.episode != null
+                                                            ? "Episode ${record.episode}"
+                                                            : "";
+                                                    final title = [
+                                                          season,
+                                                          episode,
+                                                        ]
+                                                        .where(
+                                                          (s) => s.isNotEmpty,
+                                                        )
+                                                        .join(", ");
+                                                    return record
+                                                                .name
+                                                                .isNotEmpty &&
+                                                            record.name !=
+                                                                "Untitled" &&
+                                                            title.isNotEmpty
+                                                        ? "$title  |  ${collection?.name ?? "No Collection"}"
+                                                        : collection?.name ??
+                                                            "No Collection";
+                                                  })(),
                                                   style: Theme.of(context)
                                                       .textTheme
                                                       .bodyMedium
                                                       ?.copyWith(
                                                         color: Colors.black54,
                                                         fontSize: 12,
+                                                      ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  "Duration: --:--", // Placeholder for duration
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                        color: Colors.black45,
+                                                        fontSize: 10,
                                                       ),
                                                 ),
                                               ],

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/record_provider.dart';
-import '../providers/collection_provider.dart';
+import '../../providers/record_provider.dart';
+import '../../providers/collection_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override

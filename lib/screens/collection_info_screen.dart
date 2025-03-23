@@ -4,7 +4,7 @@ import '../models/collection.dart';
 import '../providers/record_provider.dart';
 import '../providers/collection_provider.dart';
 import '../sheets/edit_collection_sheet.dart';
-import 'record_screen.dart';
+import 'record_screen/record_screen.dart';
 import '../models/record.dart';
 import 'dart:io';
 
