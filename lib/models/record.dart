@@ -11,7 +11,13 @@ class Record {
   DateTime dateCreated;
   DateTime lastUpdated;
   List<Timestamp> timestamps;
-  
+  int duration; // in seconds
+  bool isFavorite;
+  DateTime? lastAccessed;
+  bool isHidden;
+  bool isDeleted;
+  String? colorHex;
+  double playbackSpeed;
 
   Record({
     this.id,
@@ -23,6 +29,13 @@ class Record {
     DateTime? dateCreated,
     DateTime? lastUpdated,
     List<Timestamp>? timestamps,
+    this.duration = 0,
+    this.isFavorite = false,
+    this.lastAccessed,
+    this.isHidden = false,
+    this.isDeleted = false,
+    this.colorHex,
+    this.playbackSpeed = 1.0,
   })  : dateCreated = dateCreated ?? DateTime.now(),
         lastUpdated = lastUpdated ?? DateTime.now(),
         timestamps = timestamps ?? [];
@@ -50,6 +63,13 @@ class Record {
       'dateCreated': dateCreated.toIso8601String(),
       'lastUpdated': lastUpdated.toIso8601String(),
       'timestamps': jsonEncode(timestamps.map((t) => t.toMap()).toList()),
+      'duration': duration,
+      'isFavorite': isFavorite ? 1 : 0,
+      'lastAccessed': lastAccessed?.toIso8601String(),
+      'isHidden': isHidden ? 1 : 0,
+      'isDeleted': isDeleted ? 1 : 0,
+      'colorHex': colorHex,
+      'playbackSpeed': playbackSpeed,
     };
   }
 
@@ -66,6 +86,15 @@ class Record {
       timestamps: (jsonDecode(map['timestamps']) as List<dynamic>)
           .map((json) => Timestamp.fromMap(json))
           .toList(),
+      duration: map['duration'] ?? 0,
+      isFavorite: map['isFavorite'] == 1,
+      lastAccessed: map['lastAccessed'] != null
+          ? DateTime.parse(map['lastAccessed'])
+          : null,
+      isHidden: map['isHidden'] == 1,
+      isDeleted: map['isDeleted'] == 1,
+      colorHex: map['colorHex'],
+      playbackSpeed: (map['playbackSpeed'] as num?)?.toDouble() ?? 1.0,
     );
   }
 
@@ -77,6 +106,13 @@ class Record {
     String? image,
     DateTime? lastUpdated,
     List<Timestamp>? timestamps,
+    int? duration,
+    bool? isFavorite,
+    DateTime? lastAccessed,
+    bool? isHidden,
+    bool? isDeleted,
+    String? colorHex,
+    double? playbackSpeed,
   }) {
     return Record(
       id: id,
@@ -88,6 +124,13 @@ class Record {
       dateCreated: this.dateCreated,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       timestamps: timestamps ?? this.timestamps,
+      duration: duration ?? this.duration,
+      isFavorite: isFavorite ?? this.isFavorite,
+      lastAccessed: lastAccessed ?? this.lastAccessed,
+      isHidden: isHidden ?? this.isHidden,
+      isDeleted: isDeleted ?? this.isDeleted,
+      colorHex: colorHex ?? this.colorHex,
+      playbackSpeed: playbackSpeed ?? this.playbackSpeed,
     );
   }
 }

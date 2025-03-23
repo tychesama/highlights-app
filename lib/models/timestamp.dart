@@ -7,6 +7,11 @@ class Timestamp {
   String? image;
   DateTime dateCreated;
   DateTime lastUpdated;
+  List<String> tags;
+  bool isDeleted;
+  bool isFavorite;
+  String? category;
+  String? color;
 
   Timestamp({
     this.id,
@@ -17,8 +22,14 @@ class Timestamp {
     this.image,
     DateTime? dateCreated,
     DateTime? lastUpdated,
-  }) : dateCreated = dateCreated ?? DateTime.now(),
-       lastUpdated = lastUpdated ?? DateTime.now();
+    List<String>? tags,
+    this.isDeleted = false,
+    this.isFavorite = false,
+    this.category,
+    this.color,
+  })  : dateCreated = dateCreated ?? DateTime.now(),
+        lastUpdated = lastUpdated ?? DateTime.now(),
+        tags = tags ?? [];
 
   bool get isRange => endTime != null;
 
@@ -35,6 +46,11 @@ class Timestamp {
       'image': image,
       'dateCreated': dateCreated.toIso8601String(),
       'lastUpdated': lastUpdated.toIso8601String(),
+      'tags': tags.isNotEmpty ? tags.join(',') : null,
+      'isDeleted': isDeleted ? 1 : 0,
+      'isFavorite': isFavorite ? 1 : 0,
+      'category': category,
+      'color': color,
     };
   }
 
@@ -48,6 +64,11 @@ class Timestamp {
       image: map['image'],
       dateCreated: DateTime.parse(map['dateCreated']),
       lastUpdated: DateTime.parse(map['lastUpdated']),
+      tags: map['tags'] != null ? (map['tags'] as String).split(',') : [],
+      isDeleted: map['isDeleted'] == 1,
+      isFavorite: map['isFavorite'] == 1,
+      category: map['category'],
+      color: map['color'],
     );
   }
 
@@ -60,6 +81,11 @@ class Timestamp {
     String? image,
     DateTime? dateCreated,
     DateTime? lastUpdated,
+    List<String>? tags,
+    bool? isDeleted,
+    bool? isFavorite,
+    String? category,
+    String? color,
   }) {
     return Timestamp(
       id: id ?? this.id,
@@ -70,6 +96,11 @@ class Timestamp {
       image: image ?? this.image,
       dateCreated: dateCreated ?? this.dateCreated,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      tags: tags ?? this.tags,
+      isDeleted: isDeleted ?? this.isDeleted,
+      isFavorite: isFavorite ?? this.isFavorite,
+      category: category ?? this.category,
+      color: color ?? this.color,
     );
   }
 }

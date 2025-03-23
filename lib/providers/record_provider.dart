@@ -36,12 +36,17 @@ class RecordProvider extends ChangeNotifier {
 
   List<Record> get records => _records;
 
-  Future<void> fetchRecords() async {
+  Future<void> fetchRecords({bool includeDeleted = false}) async {
     _records = await DatabaseHelper.instance.getAllRecords();
+    if (!includeDeleted) {
+      _records = _records.where((r) => !r.isDeleted).toList();
+    }
     notifyListeners();
   }
 
-  void updateRecord(Record updatedRecord) {
+  Future<void> updateRecord(Record updatedRecord) async {
+    updatedRecord.lastUpdated = DateTime.now();
+    await DatabaseHelper.instance.updateRecord(updatedRecord);
     final index = _records.indexWhere(
       (record) => record.id == updatedRecord.id,
     );
@@ -76,6 +81,46 @@ class RecordProvider extends ChangeNotifier {
     await fetchRecords();
   }
 
+  Future<void> softDeleteRecord(int id) async {
+    final index = _records.indexWhere((r) => r.id == id);
+    if (index != -1) {
+      _records[index].isDeleted = true;
+      _records[index].lastUpdated = DateTime.now();
+      await DatabaseHelper.instance.updateRecord(_records[index]);
+      notifyListeners();
+    }
+  }
+
+  Future<void> restoreRecord(int id) async {
+    final index = _records.indexWhere((r) => r.id == id);
+    if (index != -1) {
+      _records[index].isDeleted = false;
+      _records[index].lastUpdated = DateTime.now();
+      await DatabaseHelper.instance.updateRecord(_records[index]);
+      notifyListeners();
+    }
+  }
+
+  Future<void> toggleFavorite(Record record) async {
+    record.isFavorite = !record.isFavorite;
+    await updateRecord(record);
+  }
+
+  Future<void> markAsHidden(Record record) async {
+    record.isHidden = true;
+    await updateRecord(record);
+  }
+
+  Future<void> markAsDeleted(Record record) async {
+    record.isDeleted = true;
+    await updateRecord(record);
+  }
+
+  Future<void> updatePlaybackSpeed(Record record, double speed) async {
+    record.playbackSpeed = speed;
+    await updateRecord(record);
+  }
+
   Future<void> clearAllRecords() async {
     await DatabaseHelper.instance.clearAllRecords();
     _records.clear();
@@ -89,6 +134,28 @@ class RecordProvider extends ChangeNotifier {
 
   void addRecordLocal(Record record) {
     _records.add(record);
+    notifyListeners();
+  }
+
+  Future<void> softDeleteTimestamp(int timestampId) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.update(
+      'timestamps',
+      {'isDeleted': 1, 'lastUpdated': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [timestampId],
+    );
+    notifyListeners();
+  }
+
+  Future<void> restoreTimestamp(int timestampId) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.update(
+      'timestamps',
+      {'isDeleted': 0, 'lastUpdated': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [timestampId],
+    );
     notifyListeners();
   }
 
@@ -190,13 +257,13 @@ class RecordProvider extends ChangeNotifier {
   Future<void> updateTimestamp(Timestamp updatedTimestamp) async {
     await DatabaseHelper.instance.updateTimestamp(updatedTimestamp);
 
-    // Update in-memory record
     final record = _records.firstWhere(
       (r) => r.id == updatedTimestamp.recordId,
     );
     final index = record.timestamps.indexWhere(
       (t) => t.id == updatedTimestamp.id,
     );
+
     if (index != -1) {
       record.timestamps[index] = updatedTimestamp;
       notifyListeners();

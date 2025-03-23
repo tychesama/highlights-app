@@ -4,7 +4,7 @@ import '../models/collection.dart';
 import '../providers/record_provider.dart';
 import '../providers/collection_provider.dart';
 import '../sheets/edit_collection_sheet.dart';
-import 'record_screen/record_screen.dart';
+import 'record_screen/main_record_screen.dart';
 import '../models/record.dart';
 import 'dart:io';
 
@@ -79,7 +79,7 @@ class CollectionInfoScreen extends StatelessWidget {
         }
 
         // Delete the collection
-        await collectionProvider.deleteCollection(collection.id!);
+        await collectionProvider.softDeleteCollection(collection.id!);
 
         // Show success message for both collection and records
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,7 +90,7 @@ class CollectionInfoScreen extends StatelessWidget {
         );
       } else {
         // Delete only the collection
-        await collectionProvider.deleteCollection(collection.id!);
+        await collectionProvider.softDeleteCollection(collection.id!);
 
         // Show success message for collection only
         ScaffoldMessenger.of(context).showSnackBar(
@@ -276,20 +276,22 @@ class CollectionInfoScreen extends StatelessWidget {
   }
 
   void _removeFromCollection(BuildContext context, Record record) {
-  final recordProvider = Provider.of<RecordProvider>(context, listen: false);
+    final recordProvider = Provider.of<RecordProvider>(context, listen: false);
 
-  final updatedRecord = record.copyWith(collectionId: null, lastUpdated: DateTime.now());
+    final updatedRecord = record.copyWith(
+      collectionId: null,
+      lastUpdated: DateTime.now(),
+    );
 
-  recordProvider.updateRecord(updatedRecord);
+    recordProvider.updateRecord(updatedRecord);
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Record removed from collection!'),
-      duration: Duration(seconds: 2),
-    ),
-  );
-}
-
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Record removed from collection!'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
   void _addToCollection(
     Record record,
@@ -515,7 +517,7 @@ class CollectionInfoScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (context) => RecordScreen(record: record),
+                                  (context) => MainRecordScreen(record: record, collection: collection,),
                             ),
                           );
                         },
