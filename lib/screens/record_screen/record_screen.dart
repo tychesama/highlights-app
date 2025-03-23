@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/record_provider.dart';
-import '../models/record.dart';
+import '../../providers/record_provider.dart';
+import '../../models/record.dart';
 
 class RecordScreen extends StatefulWidget {
   final Record record;

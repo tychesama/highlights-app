@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:highlight_marker/screens/main_screen.dart';
+import 'package:highlight_marker/screens/main_screen/main_screen.dart';
 import 'package:provider/provider.dart';
 import 'providers/record_provider.dart';
 import 'providers/collection_provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_screen/home_screen.dart';
 import 'services/navigation_service.dart';
 
 void main() {

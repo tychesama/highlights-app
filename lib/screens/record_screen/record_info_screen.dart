@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../models/record.dart';
-import '../models/collection.dart';
+import '../../models/record.dart';
+import '../../models/collection.dart';
 
 class RecordInfoScreen extends StatelessWidget {
   final Record record;
@@ -28,8 +28,8 @@ class RecordInfoScreen extends StatelessWidget {
                     collection!.thumbnail!.isNotEmpty
                 ? Image.file(
                     File(collection!.thumbnail!),
-                    width: 100,
-                    height: 100,
+                    width: 125,
+                    height: 130,
                     fit: BoxFit.cover,
                   )
                 : Container(

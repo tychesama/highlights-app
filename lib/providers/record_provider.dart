@@ -37,12 +37,14 @@ class RecordProvider extends ChangeNotifier {
   List<Record> get records => _records;
 
   Future<void> fetchRecords() async {
-    _records = await DatabaseHelper.instance.getAllRecords(); 
+    _records = await DatabaseHelper.instance.getAllRecords();
     notifyListeners();
   }
 
   void updateRecord(Record updatedRecord) {
-    final index = _records.indexWhere((record) => record.id == updatedRecord.id);
+    final index = _records.indexWhere(
+      (record) => record.id == updatedRecord.id,
+    );
     if (index != -1) {
       _records[index] = updatedRecord;
       notifyListeners();
@@ -90,43 +92,83 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<Timestamp> getTimestampsForRecord(int recordId) {
+    final record = records.firstWhere(
+      (r) => r.id == recordId,
+      orElse:
+          () => Record(
+            id: -1,
+            name: '',
+            timestamps: [],
+            dateCreated: DateTime.now(),
+            lastUpdated: DateTime.now(),
+          ),
+    );
+    return record.timestamps;
+  }
+
+  Future<void> loadTimestampsForRecord(Record record) async {
+    final timestamps = await DatabaseHelper.instance.getTimestampsByRecordId(
+      record.id!,
+    );
+    record.timestamps = timestamps;
+    notifyListeners();
+  }
+
   // Single timestamp (point-in-time)
-void addTimestampToRecord(Record record, {String? description}) {
-  final timestamp = Timestamp(
-    id: null, // Will be set by SQLite
-    recordId: record.id!,
-    time: _stopwatch.elapsedMilliseconds,
-    description: description ?? "",
-    lastUpdated: DateTime.now(),
-  );
-  record.addTimestamp(timestamp);
-  notifyListeners();
-}
-
-// Duration start
-void startHeldTimestamp() {
-  _heldStartTime = _stopwatch.elapsedMilliseconds;
-}
-
-// Duration end and save
-void endHeldTimestamp(Record record, {String? description}) {
-  if (_heldStartTime != null) {
+  Future<void> addTimestampToRecord(
+    Record record, {
+    String? description,
+  }) async {
     final timestamp = Timestamp(
       id: null, // Will be set by SQLite
       recordId: record.id!,
-      time: _heldStartTime!,
-      endTime: _stopwatch.elapsedMilliseconds,
+      time: _stopwatch.elapsedMilliseconds,
       description: description ?? "",
+      dateCreated: DateTime.now(),
       lastUpdated: DateTime.now(),
     );
-    record.addTimestamp(timestamp);
-    _heldStartTime = null;
+
+    // Save to database
+    final insertedId = await DatabaseHelper.instance.insertTimestamp(timestamp);
+    final savedTimestamp = timestamp.copyWith(id: insertedId); // assign the id
+
+    // Add to the record
+    record.addTimestamp(savedTimestamp);
     notifyListeners();
   }
-}
 
+  // Duration start
+  void startHeldTimestamp() {
+    _heldStartTime = _stopwatch.elapsedMilliseconds;
+  }
 
-  void removeTimestampFromRecord(Record record, int index) {
+  // Duration end and save
+  Future<void> endHeldTimestamp(Record record, {String? description}) async {
+    if (_heldStartTime != null) {
+      final timestamp = Timestamp(
+        id: null,
+        recordId: record.id!,
+        time: _heldStartTime!,
+        endTime: _stopwatch.elapsedMilliseconds,
+        description: description ?? "",
+        dateCreated: DateTime.now(),
+        lastUpdated: DateTime.now(),
+      );
+
+      final id = await DatabaseHelper.instance.insertTimestamp(timestamp);
+      final savedTimestamp = timestamp.copyWith(id: id);
+
+      record.addTimestamp(savedTimestamp);
+      _heldStartTime = null;
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeTimestampFromRecord(Record record, int index) async {
+    final timestamp = record.timestamps[index];
+    await DatabaseHelper.instance.deleteTimestamp(timestamp.id!);
+
     record.removeTimestamp(index);
     notifyListeners();
   }
@@ -142,6 +184,30 @@ void endHeldTimestamp(Record record, {String? description}) {
       });
     }
     _isPlaying = !_isPlaying;
+    notifyListeners();
+  }
+
+  Future<void> updateTimestamp(Timestamp updatedTimestamp) async {
+    await DatabaseHelper.instance.updateTimestamp(updatedTimestamp);
+
+    // Update in-memory record
+    final record = _records.firstWhere(
+      (r) => r.id == updatedTimestamp.recordId,
+    );
+    final index = record.timestamps.indexWhere(
+      (t) => t.id == updatedTimestamp.id,
+    );
+    if (index != -1) {
+      record.timestamps[index] = updatedTimestamp;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteTimestamp(Record record, int timestampId) async {
+    await DatabaseHelper.instance.deleteTimestamp(timestampId);
+
+    // Remove from in-memory record
+    record.timestamps.removeWhere((t) => t.id == timestampId);
     notifyListeners();
   }
 

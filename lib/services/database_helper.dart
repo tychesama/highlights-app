@@ -81,7 +81,7 @@ class DatabaseHelper {
             )
           ''');
         }
-      }
+      },
     );
   }
 
@@ -96,6 +96,28 @@ class DatabaseHelper {
       'dateCreated': timestamp.dateCreated.toIso8601String(),
       'lastUpdated': timestamp.lastUpdated.toIso8601String(),
     });
+  }
+
+  Future<int> updateTimestamp(Timestamp timestamp) async {
+    final db = await database;
+    return await db.update(
+      'timestamps',
+      {
+        'recordId': timestamp.recordId,
+        'time': timestamp.time,
+        'endTime': timestamp.endTime,
+        'description': timestamp.description,
+        'image': timestamp.image,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [timestamp.id],
+    );
+  }
+
+  Future<int> deleteTimestamp(int id) async {
+    final db = await database;
+    return await db.delete('timestamps', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Timestamp>> getTimestampsByRecordId(int recordId) async {

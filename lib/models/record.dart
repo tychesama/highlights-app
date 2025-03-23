@@ -11,6 +11,7 @@ class Record {
   DateTime dateCreated;
   DateTime lastUpdated;
   List<Timestamp> timestamps;
+  
 
   Record({
     this.id,

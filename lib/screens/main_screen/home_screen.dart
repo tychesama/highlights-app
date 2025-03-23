@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import '../providers/record_provider.dart';
-import '../providers/collection_provider.dart';
-import '../models/record.dart';
-import '../models/collection.dart';
-import 'record_screen.dart';
-import 'collection_info_screen.dart';
+import '../../providers/record_provider.dart';
+import '../../providers/collection_provider.dart';
+import '../../models/record.dart';
+import '../../models/collection.dart';
+import '../record_screen/record_screen.dart';
+import '../collection_info_screen.dart';
 import 'dart:io';
-import '../services/database_helper.dart';
+import '../../services/database_helper.dart';
 import 'settings_screen.dart';
-import 'main_record_screen.dart';
+import '../record_screen/main_record_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override

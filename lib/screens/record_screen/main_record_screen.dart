@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/record.dart';
-import '../models/collection.dart';
+import '../../models/record.dart';
+import '../../models/collection.dart';
 import 'record_info_screen.dart';
 import 'record_screen.dart';
 import 'timestamp_list_screen.dart';
