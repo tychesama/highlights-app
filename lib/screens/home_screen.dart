@@ -10,6 +10,7 @@ import 'collection_info_screen.dart';
 import 'dart:io';
 import '../services/database_helper.dart';
 import 'settings_screen.dart';
+import 'main_record_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -757,7 +758,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       MaterialPageRoute(
                                         builder:
                                             (context) =>
-                                                RecordScreen(record: record),
+                                                MainRecordScreen(record: record, collection: collection),
                                       ),
                                     );
                                   },
@@ -813,44 +814,95 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-  record.name.isNotEmpty && record.name != "Untitled"
-      ? record.name
-      : (() {
-          final season = (collection?.season ?? 0) > 0 ? "S${collection!.season}" : "";
-          final episode = record.episode != null ? "Episode ${record.episode}" : "";
-          final title = [season, episode].where((s) => s.isNotEmpty).join(", ");
-          return title.isNotEmpty ? title : "Untitled";
-        })(),
-  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
-        fontSize: 14,
-      ),
-),
-SizedBox(height: 4),
-Text(
-  (() {
-    final season = (collection?.season ?? 0) > 0 ? "S${collection!.season}" : "";
-    final episode = record.episode != null ? "Episode ${record.episode}" : "";
-    final title = [season, episode].where((s) => s.isNotEmpty).join(", ");
-    return record.name.isNotEmpty && record.name != "Untitled" && title.isNotEmpty
-        ? "$title  |  ${collection?.name ?? "No Collection"}"
-        : collection?.name ?? "No Collection";
-  })(),
-  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: Colors.black54,
-        fontSize: 12,
-      ),
-),
-SizedBox(height: 4),
-Text(
-  "Duration: --:--", // Placeholder for duration
-  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: Colors.black45,
-        fontSize: 10,
-      ),
-),
-
+                                                  record.name.isNotEmpty &&
+                                                          record.name !=
+                                                              "Untitled"
+                                                      ? record.name
+                                                      : (() {
+                                                        final season =
+                                                            (collection?.season ??
+                                                                        0) >
+                                                                    0
+                                                                ? "S${collection!.season}"
+                                                                : "";
+                                                        final episode =
+                                                            record.episode !=
+                                                                    null
+                                                                ? "Episode ${record.episode}"
+                                                                : "";
+                                                        final title = [
+                                                              season,
+                                                              episode,
+                                                            ]
+                                                            .where(
+                                                              (s) =>
+                                                                  s.isNotEmpty,
+                                                            )
+                                                            .join(", ");
+                                                        return title.isNotEmpty
+                                                            ? title
+                                                            : "Untitled";
+                                                      })(),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .headlineSmall
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.black87,
+                                                        fontSize: 14,
+                                                      ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  (() {
+                                                    final season =
+                                                        (collection?.season ??
+                                                                    0) >
+                                                                0
+                                                            ? "S${collection!.season}"
+                                                            : "";
+                                                    final episode =
+                                                        record.episode != null
+                                                            ? "Episode ${record.episode}"
+                                                            : "";
+                                                    final title = [
+                                                          season,
+                                                          episode,
+                                                        ]
+                                                        .where(
+                                                          (s) => s.isNotEmpty,
+                                                        )
+                                                        .join(", ");
+                                                    return record
+                                                                .name
+                                                                .isNotEmpty &&
+                                                            record.name !=
+                                                                "Untitled" &&
+                                                            title.isNotEmpty
+                                                        ? "$title  |  ${collection?.name ?? "No Collection"}"
+                                                        : collection?.name ??
+                                                            "No Collection";
+                                                  })(),
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        color: Colors.black54,
+                                                        fontSize: 12,
+                                                      ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  "Duration: --:--", // Placeholder for duration
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                        color: Colors.black45,
+                                                        fontSize: 10,
+                                                      ),
+                                                ),
                                               ],
                                             ),
                                           ),

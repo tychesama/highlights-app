@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/record.dart';
+import '../models/timestamp.dart';
 import 'dart:async';
 import '../services/database_helper.dart';
 import 'package:provider/provider.dart';
@@ -12,8 +13,11 @@ class RecordProvider extends ChangeNotifier {
   Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
 
+  // For duration timestamps
+  int? _heldStartTime;
+
   RecordProvider() {
-    fetchRecords(); // Load records on startup
+    fetchRecords();
   }
 
   String _searchQuery = '';
@@ -33,21 +37,15 @@ class RecordProvider extends ChangeNotifier {
   List<Record> get records => _records;
 
   Future<void> fetchRecords() async {
-    _records =
-        await DatabaseHelper.instance.getAllRecords(); // Fetch all records
+    _records = await DatabaseHelper.instance.getAllRecords(); 
     notifyListeners();
   }
 
   void updateRecord(Record updatedRecord) {
-    final index = _records.indexWhere(
-      (record) => record.id == updatedRecord.id,
-    );
+    final index = _records.indexWhere((record) => record.id == updatedRecord.id);
     if (index != -1) {
-      print("Updating record ${_records[index].id}");
       _records[index] = updatedRecord;
       notifyListeners();
-    } else {
-      print("Record not found!");
     }
   }
 
@@ -68,15 +66,12 @@ class RecordProvider extends ChangeNotifier {
         record.collectionId!,
         DateTime.now(),
       );
-    } else {
-      debugPrint('NavigationService context is null');
     }
   }
 
   Future<void> deleteRecord(Record record) async {
     await DatabaseHelper.instance.deleteRecord(record.id!);
-    await fetchRecords(); // Refresh all records
-    notifyListeners(); // Ensure UI updates
+    await fetchRecords();
   }
 
   Future<void> clearAllRecords() async {
@@ -85,9 +80,7 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Record> getAllRecords() {
-    return List.unmodifiable(_records);
-  }
+  List<Record> getAllRecords() => List.unmodifiable(_records);
 
   bool get isPlaying => _isPlaying;
   int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
@@ -97,13 +90,41 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addTimestampToRecord(Record record, {String? description}) {
-    record.addTimestamp(
-      _stopwatch.elapsedMilliseconds,
+  // Single timestamp (point-in-time)
+void addTimestampToRecord(Record record, {String? description}) {
+  final timestamp = Timestamp(
+    id: null, // Will be set by SQLite
+    recordId: record.id!,
+    time: _stopwatch.elapsedMilliseconds,
+    description: description ?? "",
+    lastUpdated: DateTime.now(),
+  );
+  record.addTimestamp(timestamp);
+  notifyListeners();
+}
+
+// Duration start
+void startHeldTimestamp() {
+  _heldStartTime = _stopwatch.elapsedMilliseconds;
+}
+
+// Duration end and save
+void endHeldTimestamp(Record record, {String? description}) {
+  if (_heldStartTime != null) {
+    final timestamp = Timestamp(
+      id: null, // Will be set by SQLite
+      recordId: record.id!,
+      time: _heldStartTime!,
+      endTime: _stopwatch.elapsedMilliseconds,
       description: description ?? "",
+      lastUpdated: DateTime.now(),
     );
+    record.addTimestamp(timestamp);
+    _heldStartTime = null;
     notifyListeners();
   }
+}
+
 
   void removeTimestampFromRecord(Record record, int index) {
     record.removeTimestamp(index);
@@ -116,7 +137,7 @@ class RecordProvider extends ChangeNotifier {
       _timer?.cancel();
     } else {
       _stopwatch.start();
-      _timer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+      _timer = Timer.periodic(Duration(milliseconds: 100), (_) {
         notifyListeners();
       });
     }

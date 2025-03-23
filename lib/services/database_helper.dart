@@ -2,13 +2,13 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/record.dart';
 import '../models/collection.dart';
+import '../models/timestamp.dart';
 import 'dart:convert';
-import '../services/database_helper.dart';
-import '../providers/collection_provider.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
   DatabaseHelper._internal();
+
   static Database? _database;
   static const String dbName = 'highlights.db';
 
@@ -22,7 +22,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), dbName);
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE collections (
@@ -45,14 +45,69 @@ class DatabaseHelper {
             episode INTEGER,
             dateCreated TEXT,
             lastUpdated TEXT,
-            timestamps TEXT,
             notes TEXT,
             image TEXT,
             FOREIGN KEY (collectionId) REFERENCES collections(id) ON DELETE CASCADE
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE timestamps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            recordId INTEGER NOT NULL,
+            time INTEGER,
+            endTime INTEGER,
+            description TEXT,
+            image TEXT,
+            dateCreated TEXT,
+            lastUpdated TEXT,
+            FOREIGN KEY (recordId) REFERENCES records(id) ON DELETE CASCADE
+          )
+        ''');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('''
+            CREATE TABLE timestamps (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              recordId INTEGER,
+              time INTEGER,
+              endTime INTEGER,
+              description TEXT,
+              image TEXT,
+              dateCreated TEXT,
+              lastUpdated TEXT,
+              FOREIGN KEY (recordId) REFERENCES records(id) ON DELETE CASCADE
+            )
+          ''');
+        }
+      }
     );
+  }
+
+  Future<int> insertTimestamp(Timestamp timestamp) async {
+    final db = await database;
+    return await db.insert('timestamps', {
+      'recordId': timestamp.recordId,
+      'time': timestamp.time,
+      'endTime': timestamp.endTime,
+      'description': timestamp.description,
+      'image': timestamp.image,
+      'dateCreated': timestamp.dateCreated.toIso8601String(),
+      'lastUpdated': timestamp.lastUpdated.toIso8601String(),
+    });
+  }
+
+  Future<List<Timestamp>> getTimestampsByRecordId(int recordId) async {
+    final db = await database;
+    final maps = await db.query(
+      'timestamps',
+      where: 'recordId = ?',
+      whereArgs: [recordId],
+      orderBy: 'time ASC',
+    );
+
+    return maps.map((map) => Timestamp.fromMap(map)).toList();
   }
 
   Future<int> insertCollection(Collection collection) async {
@@ -109,7 +164,6 @@ class DatabaseHelper {
 
   Future<int> insertRecord(Record record) async {
     final db = await database;
-
     final now = DateTime.now();
     record.lastUpdated = now;
 
@@ -124,7 +178,6 @@ class DatabaseHelper {
       'image': record.image,
     });
 
-    // Also update the parent collection's lastUpdated field
     if (record.collectionId != null) {
       await db.update(
         'collections',
@@ -160,9 +213,23 @@ class DatabaseHelper {
     });
   }
 
-  Future<int> deleteRecord(int id) async {
+  Future<List<Record>> getAllRecords() async {
     final db = await database;
-    return await db.delete('records', where: 'id = ?', whereArgs: [id]);
+    final List<Map<String, dynamic>> maps = await db.query('records');
+
+    return List.generate(maps.length, (i) {
+      return Record(
+        id: maps[i]['id'],
+        name: maps[i]['name'],
+        collectionId: maps[i]['collectionId'],
+        episode: maps[i]['episode'],
+        dateCreated: DateTime.parse(maps[i]['dateCreated']),
+        lastUpdated: DateTime.parse(maps[i]['lastUpdated']),
+        timestamps: _decodeTimestamps(maps[i]['timestamps']),
+        notes: maps[i]['notes'],
+        image: maps[i]['image'],
+      );
+    });
   }
 
   Future<int> updateRecord(Record record) async {
@@ -183,28 +250,15 @@ class DatabaseHelper {
     );
   }
 
-  Future<List<Record>> getAllRecords() async {
+  Future<int> deleteRecord(int id) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('records');
-
-    return List.generate(maps.length, (i) {
-      return Record(
-        id: maps[i]['id'],
-        name: maps[i]['name'],
-        collectionId: maps[i]['collectionId'],
-        episode: maps[i]['episode'],
-        dateCreated: DateTime.parse(maps[i]['dateCreated']),
-        lastUpdated: DateTime.parse(maps[i]['lastUpdated']),
-        timestamps: _decodeTimestamps(maps[i]['timestamps']),
-        notes: maps[i]['notes'],
-        image: maps[i]['image'],
-      );
-    });
+    return await db.delete('records', where: 'id = ?', whereArgs: [id]);
   }
 
-  List<Map<String, dynamic>> _decodeTimestamps(String json) {
-    return (jsonDecode(json) as List)
-        .map((e) => e as Map<String, dynamic>)
+  List<Timestamp> _decodeTimestamps(String json) {
+    final List<dynamic> data = jsonDecode(json);
+    return data
+        .map((e) => Timestamp.fromMap(Map<String, dynamic>.from(e)))
         .toList();
   }
 
@@ -214,9 +268,9 @@ class DatabaseHelper {
   }
 
   Future<void> clearAllCollections() async {
-  final db = await database;
-  await db.delete('collections');
-}
+    final db = await database;
+    await db.delete('collections');
+  }
 
   Future<void> viewAllData() async {
     final db = await database;
