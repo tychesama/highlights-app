@@ -18,9 +18,9 @@ class _RecordScreenState extends State<RecordScreen> {
     int seconds = (milliseconds ~/ 1000) % 60;
     int minutes = (milliseconds ~/ 60000) % 60;
     int hours = milliseconds ~/ 3600000;
-    return "${hours.toString().padLeft(2, '0')}:" 
-        "${minutes.toString().padLeft(2, '0')}:" 
-        "${seconds.toString().padLeft(2, '0')}." 
+    return "${hours.toString().padLeft(2, '0')}:"
+        "${minutes.toString().padLeft(2, '0')}:"
+        "${seconds.toString().padLeft(2, '0')}."
         "${ms.toString().padLeft(3, '0')}";
   }
 
@@ -36,10 +36,8 @@ class _RecordScreenState extends State<RecordScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor, // Ensure background color is set
-          border: Border(
-            top: BorderSide(color: Colors.white30, width: 1.5),
-          ),
+          color: Theme.of(context).scaffoldBackgroundColor,
+          border: Border(top: BorderSide(color: Colors.white30, width: 1.5)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -61,8 +59,8 @@ class _RecordScreenState extends State<RecordScreen> {
                 }
               },
               child: Container(
-                width: screenWidth * 0.45, 
-                height: screenWidth * 0.45, 
+                width: screenWidth * 0.45,
+                height: screenWidth * 0.45,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.red,
@@ -78,7 +76,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   child: Text(
                     'Mark',
                     style: TextStyle(
-                      fontSize: 24, // Bigger text
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -87,20 +85,19 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
             ),
 
-            const SizedBox(height: 12), // Less spacing before timer
+            const SizedBox(height: 12),
 
-            /// TIME - closer to buttons
             Text(
-              formatTime(recordProvider.elapsedMilliseconds),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+              formatTime(
+                recordProvider.getElapsedMillisecondsForRecord(
+                  widget.record.id!,
+                ),
               ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
 
-            const Spacer(), // Pushes buttons downward
+            const Spacer(),
 
-            /// CONTROLS - now lower
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -128,9 +125,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   icon: const Icon(Icons.stop),
                   tooltip: 'Stop',
                   color: Colors.red,
-                  onPressed: () {
-                    // recordProvider.resetRecording();
-                  },
+                  onPressed: () {},
                 ),
                 IconButton(
                   icon: const Icon(Icons.fast_forward),

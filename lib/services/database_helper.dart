@@ -12,6 +12,8 @@ class DatabaseHelper {
   static Database? _database;
   static const String dbName = 'highlights.db';
 
+  // -------------------- Initialization --------------------
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB();
@@ -85,6 +87,8 @@ class DatabaseHelper {
     );
   }
 
+  // -------------------- Timestamp Methods --------------------
+
   Future<int> insertTimestamp(Timestamp timestamp) async {
     final db = await database;
     return await db.insert('timestamps', {
@@ -132,6 +136,8 @@ class DatabaseHelper {
     return maps.map((map) => Timestamp.fromMap(map)).toList();
   }
 
+  // -------------------- Collection Methods --------------------
+
   Future<int> insertCollection(Collection collection) async {
     final db = await database;
     return await db.insert('collections', {
@@ -175,11 +181,6 @@ class DatabaseHelper {
     return null;
   }
 
-  Future<int> deleteCollection(int id) async {
-    final db = await database;
-    return await db.delete('collections', where: 'id = ?', whereArgs: [id]);
-  }
-
   Future<int> updateCollection(Collection collection) async {
     final db = await database;
     return await db.update(
@@ -196,6 +197,13 @@ class DatabaseHelper {
       whereArgs: [collection.id],
     );
   }
+
+  Future<int> deleteCollection(int id) async {
+    final db = await database;
+    return await db.delete('collections', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // -------------------- Record Methods --------------------
 
   Future<int> insertRecord(Record record) async {
     final db = await database;
@@ -240,13 +248,9 @@ class DatabaseHelper {
     }
   }
 
-  Future<List<Record>> getRecordsByCollection(int collectionId) async {
+  Future<List<Record>> getAllRecords() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'records',
-      where: 'collectionId = ?',
-      whereArgs: [collectionId],
-    );
+    final List<Map<String, dynamic>> maps = await db.query('records');
 
     return Future.wait(
       maps.map((map) async {
@@ -266,9 +270,13 @@ class DatabaseHelper {
     );
   }
 
-  Future<List<Record>> getAllRecords() async {
+  Future<List<Record>> getRecordsByCollection(int collectionId) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('records');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'records',
+      where: 'collectionId = ?',
+      whereArgs: [collectionId],
+    );
 
     return Future.wait(
       maps.map((map) async {
@@ -311,9 +319,8 @@ class DatabaseHelper {
       whereArgs: [record.id],
     );
 
-    // Re-insert updated timestamps
     for (var timestamp in record.timestamps) {
-      timestamp.recordId = record.id!; // Make sure this is set
+      timestamp.recordId = record.id!;
       await insertTimestamp(timestamp);
     }
 
@@ -324,6 +331,8 @@ class DatabaseHelper {
     final db = await database;
     return await db.delete('records', where: 'id = ?', whereArgs: [id]);
   }
+
+  // -------------------- Utility Methods --------------------
 
   List<Timestamp> _decodeTimestamps(String json) {
     final List<dynamic> data = jsonDecode(json);
@@ -348,6 +357,7 @@ class DatabaseHelper {
     for (var record in records) {
       print(record);
     }
+
     final collections = await db.query('collections');
     for (var collection in collections) {
       print(collection);
