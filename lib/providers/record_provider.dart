@@ -39,7 +39,9 @@ class RecordProvider extends ChangeNotifier {
   }
 
   Future<void> updateRecord(Record updatedRecord) async {
-    final index = _records.indexWhere((record) => record.id == updatedRecord.id);
+    final index = _records.indexWhere(
+      (record) => record.id == updatedRecord.id,
+    );
     if (index != -1) {
       await DatabaseHelper.instance.updateRecord(updatedRecord);
       _records[index] = updatedRecord;
@@ -54,10 +56,16 @@ class RecordProvider extends ChangeNotifier {
 
     final context = NavigationService.navigatorKey.currentContext;
     if (context != null) {
-      final collectionProvider = Provider.of<CollectionProvider>(context, listen: false);
+      final collectionProvider = Provider.of<CollectionProvider>(
+        context,
+        listen: false,
+      );
       await collectionProvider.fetchCollections();
       if (record.collectionId != null) {
-        collectionProvider.updateCollectionLastUpdated(record.collectionId!, DateTime.now());
+        collectionProvider.updateCollectionLastUpdated(
+          record.collectionId!,
+          DateTime.now(),
+        );
       }
     }
 
@@ -66,14 +74,12 @@ class RecordProvider extends ChangeNotifier {
 
   Future<void> deleteRecord(Record record) async {
     await DatabaseHelper.instance.deleteRecord(record.id!);
-    _initialOffsets.remove(record.id); // Clear offset
     await fetchRecords();
   }
 
   Future<void> clearAllRecords() async {
     await DatabaseHelper.instance.clearAllRecords();
     _records.clear();
-    _initialOffsets.clear();
     notifyListeners();
   }
 
@@ -86,39 +92,79 @@ class RecordProvider extends ChangeNotifier {
   bool _isPlaying = false;
   Stopwatch _stopwatch = Stopwatch();
   bool get isPlaying => _isPlaying;
+  Timer? _ticker;
+
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(Duration(milliseconds: 100), (_) {
+      if (_isPlaying) {
+        notifyListeners();
+      }
+    });
+  }
+
+  void _stopTicker() {
+    _ticker?.cancel();
+    _ticker = null;
+  }
+
+  final Map<int, int> _recordStartOffsets = {};
 
   void togglePlay() {
     if (_isPlaying) {
       _stopwatch.stop();
+      _stopTicker();
     } else {
       _stopwatch.start();
+      _startTicker();
     }
     _isPlaying = !_isPlaying;
     notifyListeners();
   }
 
-  void resetTimerForRecord(Record record) {
+  void startStopwatchForRecord(Record record, List<Timestamp> timestamps) {
+    int maxTime = 0;
+    if (timestamps.isNotEmpty) {
+      maxTime = timestamps
+          .map((t) => t.endTime ?? t.time)
+          .reduce((a, b) => a > b ? a : b);
+    }
+
     _stopwatch.reset();
-    _initialOffsets[record.id!] = Duration.zero;
-    record.timestamps.clear();
+    _stopwatch.start();
+    _startTicker();
+
+    _recordStartOffsets[record.id!] = maxTime;
+    _isPlaying = true;
+    notifyListeners();
+  }
+
+  void resetTimerForRecord(Record record) {
+  _stopwatch.stop();
+  _stopwatch.reset();
+  _stopTicker();
+  _recordStartOffsets.remove(record.id);
+  _isPlaying = false;
+  notifyListeners();
+}
+
+
+  int _offsetMilliseconds = 0;
+
+  void prepareStopwatchForRecord(Record record) {
+    _stopwatch.reset();
+    _offsetMilliseconds =
+        record.timestamps.isNotEmpty
+            ? record.timestamps
+                .map((t) => t.endTime ?? t.time)
+                .reduce((a, b) => a > b ? a : b)
+            : 0;
     _isPlaying = false;
     notifyListeners();
   }
 
-  // --------------------------------------------------
-  // Timer Offsets
-  // --------------------------------------------------
-
-  final Map<int, Duration> _initialOffsets = {};
-
   int getElapsedMillisecondsForRecord(int recordId) {
-    final offset = _initialOffsets[recordId] ?? Duration.zero;
-    return offset.inMilliseconds + _stopwatch.elapsedMilliseconds;
-  }
-
-  void setElapsedMillisecondsForRecord(int recordId, int value) {
-    _initialOffsets[recordId] = Duration(milliseconds: value);
-    notifyListeners();
+    return _offsetMilliseconds + _stopwatch.elapsedMilliseconds;
   }
 
   // --------------------------------------------------
@@ -130,28 +176,24 @@ class RecordProvider extends ChangeNotifier {
   List<Timestamp> getTimestampsForRecord(int recordId) {
     final record = records.firstWhere(
       (r) => r.id == recordId,
-      orElse: () => Record(
-        id: -1,
-        name: '',
-        timestamps: [],
-        dateCreated: DateTime.now(),
-        lastUpdated: DateTime.now(),
-      ),
+      orElse:
+          () => Record(
+            id: -1,
+            name: '',
+            timestamps: [],
+            dateCreated: DateTime.now(),
+            lastUpdated: DateTime.now(),
+          ),
     );
     return record.timestamps;
   }
 
   Future<void> loadTimestampsForRecord(Record record) async {
-    final timestamps = await DatabaseHelper.instance.getTimestampsByRecordId(record.id!);
+    final timestamps = await DatabaseHelper.instance.getTimestampsByRecordId(
+      record.id!,
+    );
+
     record.timestamps = timestamps;
-
-    if (timestamps.isNotEmpty) {
-      final latest = timestamps.map((t) => t.endTime ?? t.time).reduce((a, b) => a > b ? a : b);
-      _initialOffsets[record.id!] = Duration(milliseconds: latest);
-    } else {
-      _initialOffsets[record.id!] = Duration.zero;
-    }
-
     notifyListeners();
   }
 
@@ -206,8 +248,12 @@ class RecordProvider extends ChangeNotifier {
 
   Future<void> updateTimestamp(Timestamp updatedTimestamp) async {
     await DatabaseHelper.instance.updateTimestamp(updatedTimestamp);
-    final record = _records.firstWhere((r) => r.id == updatedTimestamp.recordId);
-    final index = record.timestamps.indexWhere((t) => t.id == updatedTimestamp.id);
+    final record = _records.firstWhere(
+      (r) => r.id == updatedTimestamp.recordId,
+    );
+    final index = record.timestamps.indexWhere(
+      (t) => t.id == updatedTimestamp.id,
+    );
     if (index != -1) {
       record.timestamps[index] = updatedTimestamp;
       notifyListeners();

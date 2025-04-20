@@ -5,7 +5,6 @@ import '../../models/record.dart';
 
 class RecordScreen extends StatefulWidget {
   final Record record;
-
   const RecordScreen({super.key, required this.record});
 
   @override
@@ -74,7 +73,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
                 child: const Center(
                   child: Text(
-                    'Mark',
+                    'press',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -85,7 +84,7 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
             ),
 
-            const SizedBox(height: 12),
+            const Spacer(),
 
             Text(
               formatTime(
@@ -95,8 +94,6 @@ class _RecordScreenState extends State<RecordScreen> {
               ),
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-
-            const Spacer(),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,

@@ -32,20 +32,7 @@ class _MainRecordScreenState extends State<MainRecordScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await recordProvider.loadTimestampsForRecord(widget.record);
-
-      final timestamps = recordProvider.getTimestampsForRecord(
-        widget.record.id!,
-      );
-
-      if (timestamps.isNotEmpty) {
-        int maxTime = timestamps
-            .map((t) => t.endTime ?? t.time)
-            .reduce((a, b) => a > b ? a : b);
-        recordProvider.setElapsedMillisecondsForRecord(
-          widget.record.id!,
-          maxTime,
-        );
-      }
+      recordProvider.prepareStopwatchForRecord(widget.record);
     });
 
     _controller = AnimationController(

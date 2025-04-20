@@ -3,6 +3,7 @@ import '../../models/record.dart';
 import '../../models/timestamp.dart';
 import '../../providers/record_provider.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 class TimestampListScreen extends StatefulWidget {
   final Record record;
@@ -18,6 +19,8 @@ enum SortMode { lastUpdated, highestTimeFirst, lowestTimeFirst }
 SortMode _sortMode = SortMode.lastUpdated;
 
 class _TimestampListScreenState extends State<TimestampListScreen> {
+  Timer? _ticker;
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +30,16 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
         listen: false,
       ).loadTimestampsForRecord(widget.record);
     });
+
+    _ticker = Timer.periodic(Duration(milliseconds: 100), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
   }
 
   void _cycleSortMode() {
@@ -47,12 +60,13 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
           widget.record.id!,
         );
 
-        final int maxTime =
-            timestamps.isNotEmpty
-                ? timestamps
-                    .map((t) => t.endTime ?? t.time)
-                    .reduce((a, b) => a > b ? a : b)
-                : 1;
+        final currentElapsed = recordProvider.getElapsedMillisecondsForRecord(
+          widget.record.id!,
+        );
+        final int maxTime = [
+          ...timestamps.map((t) => t.endTime ?? t.time),
+          currentElapsed,
+        ].fold(1, (a, b) => a > b ? a : b);
 
         // Sort timestamps once
         List<Timestamp> sortedTimestamps = List.from(timestamps);
@@ -117,6 +131,13 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                     width: double.infinity,
                     child: Stack(
                       children: [
+                        Positioned(
+                          left: constraints.maxWidth - 2,
+                          top: 0,
+                          bottom: 0,
+                          child: Container(width: 2, color: Colors.white70),
+                        ),
+
                         Positioned.fill(
                           child: Align(
                             alignment: Alignment.centerLeft,
@@ -148,24 +169,41 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                             );
                           } else {
                             return Positioned(
-                              left: start,
-                              top: 20,
-                              child: Column(
-                                children: [
-                                  const Icon(
-                                    Icons.circle,
-                                    size: 10,
-                                    color: Colors.orange,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    formatTime(timestamp.time),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.white70,
+                              left: start - 4, 
+                              top: 10,
+                              child: Transform.translate(
+                                offset: Offset(0, -1), 
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    Container(
+                                      width: 2,
+                                      height: 10,
+                                      color: Colors.orange,
+                                    ),
+                                    CustomPaint(
+                                      size: Size(2, 6),
+                                      painter: _TrianglePainter(
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      formatTime(timestamp.time),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           }
@@ -235,11 +273,39 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
   }
 
   String formatTime(int milliseconds) {
+    int ms = milliseconds % 1000;
     int seconds = (milliseconds ~/ 1000) % 60;
     int minutes = (milliseconds ~/ 60000) % 60;
     int hours = milliseconds ~/ 3600000;
     return "${hours.toString().padLeft(2, '0')}:"
         "${minutes.toString().padLeft(2, '0')}:"
-        "${seconds.toString().padLeft(2, '0')}";
+        "${seconds.toString().padLeft(2, '0')}."
+        "${ms.toString().padLeft(3, '0')}";
   }
+}
+
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+
+  _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
+
+    final path =
+        Path()
+          ..moveTo(0, 0)
+          ..lineTo(size.width / 2, size.height)
+          ..lineTo(size.width, 0)
+          ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

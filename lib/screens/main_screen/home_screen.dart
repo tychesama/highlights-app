@@ -5,11 +5,8 @@ import '../../providers/record_provider.dart';
 import '../../providers/collection_provider.dart';
 import '../../models/record.dart';
 import '../../models/collection.dart';
-import '../record_screen/record_screen.dart';
 import '../collection_info_screen.dart';
 import 'dart:io';
-import '../../services/database_helper.dart';
-import 'settings_screen.dart';
 import '../record_screen/main_record_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -36,6 +33,20 @@ class _HomeScreenState extends State<HomeScreen> {
           _isAtTop = false;
         });
       }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final recordProvider = Provider.of<RecordProvider>(
+        context,
+        listen: false,
+      );
+      final collectionProvider = Provider.of<CollectionProvider>(
+        context,
+        listen: false,
+      );
+
+      recordProvider.fetchRecords();
+      collectionProvider.fetchCollections(); 
     });
   }
 
@@ -477,8 +488,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                         ),
                       );
-
-                      
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
