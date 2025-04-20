@@ -134,7 +134,44 @@ class CollectionInfoScreen extends StatelessWidget {
               Text("Edit Record"),
               Spacer(),
               IconButton(
+                icon: Icon(Icons.remove_circle, color: Colors.orange),
+                tooltip: "Remove from Collection",
+                onPressed: () async {
+                  final confirmRemove = await showDialog<bool>(
+                    context: context,
+                    builder:
+                        (dialogContext) => AlertDialog(
+                          title: Text("Remove from Collection"),
+                          content: Text(
+                            "Are you sure you want to remove this record from the collection?",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed:
+                                  () => Navigator.pop(dialogContext, false),
+                              child: Text("Cancel"),
+                            ),
+                            TextButton(
+                              onPressed:
+                                  () => Navigator.pop(dialogContext, true),
+                              child: Text(
+                                "Remove",
+                                style: TextStyle(color: Colors.orange),
+                              ),
+                            ),
+                          ],
+                        ),
+                  );
+
+                  if (confirmRemove == true) {
+                    Navigator.pop(context);
+                    await _removeFromCollection(context, record);
+                  }
+                },
+              ),
+              IconButton(
                 icon: Icon(Icons.delete_forever, color: Colors.red),
+                tooltip: "Delete Record",
                 onPressed: () async {
                   final confirmDelete = await showDialog<bool>(
                     context: context,
@@ -161,21 +198,24 @@ class CollectionInfoScreen extends StatelessWidget {
                   );
 
                   if (confirmDelete == true) {
-                    final recordProvider = Provider.of<RecordProvider>(
+                    Navigator.pop(
                       editDialogContext,
+                    ); // 👈 Close the edit dialog FIRST
+
+                    final recordProvider = Provider.of<RecordProvider>(
+                      context,
                       listen: false,
                     );
-                    await recordProvider.deleteRecord(record);
 
-                    ScaffoldMessenger.of(editDialogContext).showSnackBar(
+                    await recordProvider.deleteRecord(record);
+                    await recordProvider.fetchRecords();
+
+                    ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Record deleted permanently!'),
                         duration: Duration(seconds: 2),
                       ),
                     );
-
-                    // Close the edit dialog after deleting
-                    Navigator.pop(editDialogContext);
                   }
                 },
               ),
@@ -205,43 +245,6 @@ class CollectionInfoScreen extends StatelessWidget {
               onPressed: () => Navigator.pop(editDialogContext),
               child: Text("Cancel"),
             ),
-            // TextButton(
-            //   onPressed: () async {
-            //     final confirmRemove = await showDialog<bool>(
-            //       context: context,
-            //       builder:
-            //           (dialogContext) => AlertDialog(
-            //             title: Text("Remove from Collection"),
-            //             content: Text(
-            //               "Are you sure you want to remove this record from the collection?",
-            //             ),
-            //             actions: [
-            //               TextButton(
-            //                 onPressed:
-            //                     () => Navigator.pop(dialogContext, false),
-            //                 child: Text("Cancel"),
-            //               ),
-            //               TextButton(
-            //                 onPressed: () => Navigator.pop(dialogContext, true),
-            //                 child: Text(
-            //                   "Remove",
-            //                   style: TextStyle(color: Colors.orange),
-            //                 ),
-            //               ),
-            //             ],
-            //           ),
-            //     );
-
-            //     if (confirmRemove == true) {
-            //       _removeFromCollection(context, record);
-            //       Navigator.pop(
-            //         context,
-            //       ); // Close the edit dialog after removing
-            //     }
-            //   },
-            //   child: Text("Remove"),
-            //   style: TextButton.styleFrom(foregroundColor: Colors.orange),
-            // ),
             ElevatedButton(
               onPressed: () {
                 final updatedRecord = record.copyWith(
@@ -275,21 +278,27 @@ class CollectionInfoScreen extends StatelessWidget {
     );
   }
 
-  void _removeFromCollection(BuildContext context, Record record) {
-  final recordProvider = Provider.of<RecordProvider>(context, listen: false);
+  Future<void> _removeFromCollection(
+    BuildContext context,
+    Record record,
+  ) async {
+    final recordProvider = Provider.of<RecordProvider>(context, listen: false);
 
-  final updatedRecord = record.copyWith(collectionId: null, lastUpdated: DateTime.now());
+    final updatedRecord = record.copyWith(
+      collectionId: null,
+      lastUpdated: DateTime.now(),
+    );
 
-  recordProvider.updateRecord(updatedRecord);
+    await recordProvider.updateRecord(updatedRecord);
+    await recordProvider.fetchRecords();
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Record removed from collection!'),
-      duration: Duration(seconds: 2),
-    ),
-  );
-}
-
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Record removed from collection!'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
   void _addToCollection(
     Record record,
@@ -350,11 +359,7 @@ class CollectionInfoScreen extends StatelessWidget {
                         subtitle: Text("Episode: ${record.episode ?? 'N/A'}"),
                         onTap: () {
                           Navigator.pop(context);
-                          _addToCollection(
-                            record,
-                            collectionId,
-                            context,
-                          ); // Add the record to the collection
+                          _addToCollection(record, collectionId, context);
                         },
                       );
                     }
@@ -364,6 +369,98 @@ class CollectionInfoScreen extends StatelessWidget {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showNewRecordDialog(BuildContext context, int? collectionId) {
+    TextEditingController titleController = TextEditingController();
+    TextEditingController episodeController = TextEditingController();
+    TextEditingController notesController = TextEditingController();
+
+    final collectionProvider = Provider.of<CollectionProvider>(
+      context,
+      listen: false,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("New Record"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(labelText: "Enter title"),
+              ),
+              TextField(
+                controller: episodeController,
+                decoration: InputDecoration(labelText: "Episode Number"),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: notesController,
+                decoration: InputDecoration(labelText: "Notes"),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newRecord = Record(
+                  name:
+                      titleController.text.isNotEmpty
+                          ? titleController.text
+                          : "Untitled",
+                  collectionId: collectionId,
+                  episode: int.tryParse(episodeController.text),
+                  notes: notesController.text,
+                  image: "",
+                  dateCreated: DateTime.now(),
+                  lastUpdated: DateTime.now(),
+                  timestamps: [],
+                );
+
+                final recordProvider = Provider.of<RecordProvider>(
+                  context,
+                  listen: false,
+                );
+
+                final newId = await recordProvider.addRecord(newRecord);
+                final createdRecord = await recordProvider.getRecordById(newId);
+
+                Navigator.pop(context); // close dialog
+
+                if (createdRecord != null) {
+                  final selectedCollection =
+                      collectionId != null
+                          ? collectionProvider.getCollectionById(collectionId)
+                          : null;
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => MainRecordScreen(
+                            record: createdRecord,
+                            collection: selectedCollection,
+                          ),
+                    ),
+                  );
+                }
+              },
+              child: Text("OK"),
+            ),
+          ],
         );
       },
     );
@@ -384,7 +481,7 @@ class CollectionInfoScreen extends StatelessWidget {
           IconButton(
             icon: Icon(Icons.add),
             onPressed: () {
-              _showSelectRecordModal(context, collection.id);
+              _showNewRecordDialog(context, collection.id);
             },
           ),
           PopupMenuButton<String>(
@@ -403,10 +500,16 @@ class CollectionInfoScreen extends StatelessWidget {
                 );
               } else if (value == 'delete') {
                 _confirmDelete(context);
+              } else if (value == 'addRecords') {
+                _showSelectRecordModal(context, collection.id);
               }
             },
             itemBuilder:
                 (context) => [
+                  const PopupMenuItem(
+                    value: 'addRecords',
+                    child: Text('Add Record'),
+                  ),
                   const PopupMenuItem(value: 'edit', child: Text('Edit')),
                   const PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],
@@ -515,7 +618,10 @@ class CollectionInfoScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (context) => MainRecordScreen(record: record, collection: collection),
+                                  (context) => MainRecordScreen(
+                                    record: record,
+                                    collection: collection,
+                                  ),
                             ),
                           );
                         },

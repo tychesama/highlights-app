@@ -11,7 +11,6 @@ class Record {
   DateTime dateCreated;
   DateTime lastUpdated;
   List<Timestamp> timestamps;
-  
 
   Record({
     this.id,
@@ -23,9 +22,9 @@ class Record {
     DateTime? dateCreated,
     DateTime? lastUpdated,
     List<Timestamp>? timestamps,
-  })  : dateCreated = dateCreated ?? DateTime.now(),
-        lastUpdated = lastUpdated ?? DateTime.now(),
-        timestamps = timestamps ?? [];
+  }) : dateCreated = dateCreated ?? DateTime.now(),
+       lastUpdated = lastUpdated ?? DateTime.now(),
+       timestamps = timestamps ?? [];
 
   void addTimestamp(Timestamp timestamp) {
     timestamps.add(timestamp);
@@ -54,18 +53,32 @@ class Record {
   }
 
   factory Record.fromMap(Map<String, dynamic> map) {
+    List<Timestamp> parsedTimestamps = [];
+
+    if (map['timestamps'] != null &&
+        map['timestamps'] is String &&
+        map['timestamps'].toString().isNotEmpty) {
+      try {
+        final List<dynamic> rawList = jsonDecode(map['timestamps']);
+        parsedTimestamps =
+            rawList.map((json) => Timestamp.fromMap(json)).toList();
+      } catch (e) {
+        print("Failed to decode timestamps: $e");
+      }
+    }
+
     return Record(
       id: map['id'],
-      name: map['name'],
+      name: map['name'] ?? 'Untitled',
       collectionId: map['collectionId'],
       episode: map['episode'],
-      notes: map['notes'],
-      image: map['image'],
-      dateCreated: DateTime.parse(map['dateCreated']),
-      lastUpdated: DateTime.parse(map['lastUpdated']),
-      timestamps: (jsonDecode(map['timestamps']) as List<dynamic>)
-          .map((json) => Timestamp.fromMap(json))
-          .toList(),
+      notes: map['notes'] ?? '',
+      image: map['image'] ?? '',
+      dateCreated:
+          DateTime.tryParse(map['dateCreated'] ?? '') ?? DateTime.now(),
+      lastUpdated:
+          DateTime.tryParse(map['lastUpdated'] ?? '') ?? DateTime.now(),
+      timestamps: parsedTimestamps,
     );
   }
 
@@ -73,7 +86,7 @@ class Record {
     String? name,
     int? episode,
     String? notes,
-    int? collectionId,
+    Object? collectionId = _sentinel, // use Object to allow null explicitly
     String? image,
     DateTime? lastUpdated,
     List<Timestamp>? timestamps,
@@ -83,11 +96,14 @@ class Record {
       name: name ?? this.name,
       episode: episode ?? this.episode,
       notes: notes ?? this.notes,
-      collectionId: collectionId ?? this.collectionId,
+      collectionId:
+          collectionId == _sentinel ? this.collectionId : collectionId as int?,
       image: image ?? this.image,
       dateCreated: this.dateCreated,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       timestamps: timestamps ?? this.timestamps,
     );
   }
+
+  static const _sentinel = Object();
 }

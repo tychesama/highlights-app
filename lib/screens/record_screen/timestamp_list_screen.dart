@@ -3,6 +3,8 @@ import '../../models/record.dart';
 import '../../models/timestamp.dart';
 import '../../providers/record_provider.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
+import '../../services/database_helper.dart';
 
 class TimestampListScreen extends StatefulWidget {
   final Record record;
@@ -13,37 +15,238 @@ class TimestampListScreen extends StatefulWidget {
   State<TimestampListScreen> createState() => _TimestampListScreenState();
 }
 
+enum SortMode { lastUpdated, highestTimeFirst, lowestTimeFirst }
+
+SortMode _sortMode = SortMode.lastUpdated;
+
 class _TimestampListScreenState extends State<TimestampListScreen> {
+  Timer? _ticker;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
-      Provider.of<RecordProvider>(context, listen: false)
-          .loadTimestampsForRecord(widget.record);
+      Provider.of<RecordProvider>(
+        context,
+        listen: false,
+      ).loadTimestampsForRecord(widget.record);
     });
+
+    _ticker = Timer.periodic(Duration(milliseconds: 100), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _cycleSortMode() {
+    final allModes = SortMode.values;
+    final currentIndex = allModes.indexOf(_sortMode);
+    final nextIndex = (currentIndex + 1) % allModes.length;
+
+    setState(() {
+      _sortMode = allModes[nextIndex];
+    });
+  }
+
+  void _showEditTimestampDialog(BuildContext context, Timestamp timestamp) {
+    final recordProvider = Provider.of<RecordProvider>(context, listen: false);
+    final TextEditingController descController = TextEditingController(
+      text: timestamp.description,
+    );
+    final TextEditingController timeController = TextEditingController(
+      text: timestamp.time.toString(),
+    );
+    final TextEditingController? endTimeController =
+        timestamp.endTime != null
+            ? TextEditingController(text: timestamp.endTime.toString())
+            : null;
+
+    showDialog(
+      context: context,
+      builder: (editDialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Text("Edit Timestamp"),
+              Spacer(),
+              IconButton(
+                icon: Icon(Icons.delete_forever, color: Colors.red),
+                tooltip: "Delete Timestamp",
+                onPressed: () async {
+                  // Show confirmation dialog to remove timestamp
+                  final confirmDelete = await showDialog<bool>(
+                    context: context,
+                    builder:
+                        (dialogContext) => AlertDialog(
+                          title: Text("Delete Timestamp"),
+                          content: Text(
+                            "Are you sure you want to delete this timestamp?",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed:
+                                  () => Navigator.pop(dialogContext, false),
+                              child: Text("Cancel"),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                // Proceed with the deletion
+                                await recordProvider.deleteTimestamp(
+                                  context,
+                                  widget.record,
+                                  timestamp.id!,
+                                );
+                                Navigator.pop(
+                                  dialogContext,
+                                  true,
+                                ); // Close the confirm dialog
+                                // Show Snackbar after deletion
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Timestamp deleted!')),
+                                );
+                              },
+                              child: Text(
+                                "Delete",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                  );
+
+                  // If the user confirmed the deletion, just close the edit dialog
+                  if (confirmDelete == true) {
+                    Navigator.pop(
+                      editDialogContext,
+                    ); // Close the timestamp edit dialog
+                  }
+                },
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(labelText: "Description"),
+              ),
+              TextField(
+                controller: timeController,
+                decoration: const InputDecoration(labelText: "Start Time (ms)"),
+                keyboardType: TextInputType.number,
+              ),
+              if (endTimeController != null)
+                TextField(
+                  controller: endTimeController,
+                  decoration: const InputDecoration(labelText: "End Time (ms)"),
+                  keyboardType: TextInputType.number,
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(editDialogContext),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // Save the changes made to the timestamp
+                timestamp.description = descController.text;
+                timestamp.time =
+                    int.tryParse(timeController.text) ?? timestamp.time;
+                if (endTimeController != null) {
+                  timestamp.endTime =
+                      int.tryParse(endTimeController.text) ?? timestamp.endTime;
+                }
+
+                // Update the timestamp
+                await recordProvider.updateTimestamp(timestamp);
+                Navigator.pop(editDialogContext); // Close the dialog
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<RecordProvider>(
       builder: (context, recordProvider, child) {
-        final timestamps = recordProvider.getTimestampsForRecord(widget.record.id!);
-        final int maxTime = timestamps.isNotEmpty
-            ? timestamps.map((t) => t.endTime ?? t.time).reduce((a, b) => a > b ? a : b)
-            : 1;
+        final timestamps = recordProvider.getTimestampsForRecord(
+          widget.record.id!,
+        );
+
+        final currentElapsed = recordProvider.getElapsedMillisecondsForRecord(
+          widget.record.id!,
+        );
+        final int maxTime = [
+          ...timestamps.map((t) => t.endTime ?? t.time),
+          currentElapsed,
+        ].fold(1, (a, b) => a > b ? a : b);
+
+        // Sort timestamps once
+        List<Timestamp> sortedTimestamps = List.from(timestamps);
+
+        if (_sortMode == SortMode.lastUpdated) {
+          sortedTimestamps.sort(
+            (a, b) => b.lastUpdated.compareTo(a.lastUpdated),
+          );
+        } else if (_sortMode == SortMode.highestTimeFirst) {
+          sortedTimestamps.sort((a, b) {
+            final aTime = a.endTime ?? a.time;
+            final bTime = b.endTime ?? b.time;
+            return bTime.compareTo(aTime);
+          });
+        } else {
+          sortedTimestamps.sort((a, b) {
+            final aTime = a.endTime ?? a.time;
+            final bTime = b.endTime ?? b.time;
+            return aTime.compareTo(bTime);
+          });
+        }
 
         return Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            border: Border.all(color: Colors.grey, width: 1.5),
+            borderRadius: BorderRadius.zero,
+            border: Border.all(color: Colors.white30, width: 1.5),
             color: Theme.of(context).scaffoldBackgroundColor,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Timestamps', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Timestamps',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.rotationY(3.1416),
+                        child: IconButton(
+                          onPressed: _cycleSortMode,
+                          icon: const Icon(Icons.sort, color: Colors.white70),
+                          tooltip: 'Change sort mode',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
 
               // Timeline
               LayoutBuilder(
@@ -53,24 +256,31 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                     width: double.infinity,
                     child: Stack(
                       children: [
-                        // Base line
+                        Positioned(
+                          left: constraints.maxWidth - 2,
+                          top: 0,
+                          bottom: 0,
+                          child: Container(width: 2, color: Colors.white70),
+                        ),
+
                         Positioned.fill(
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Container(
                               height: 4,
                               width: constraints.maxWidth,
-                              color: Colors.blueGrey.withOpacity(0.3),
+                              color: Colors.white24,
                             ),
                           ),
                         ),
-
-                        // Markers or durations
                         ...timestamps.map((timestamp) {
-                          final double start = (timestamp.time / maxTime) * constraints.maxWidth;
-                          final double? end = timestamp.endTime != null
-                              ? (timestamp.endTime! / maxTime) * constraints.maxWidth
-                              : null;
+                          final double start =
+                              (timestamp.time / maxTime) * constraints.maxWidth;
+                          final double? end =
+                              timestamp.endTime != null
+                                  ? (timestamp.endTime! / maxTime) *
+                                      constraints.maxWidth
+                                  : null;
 
                           if (end != null) {
                             return Positioned(
@@ -84,17 +294,41 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                             );
                           } else {
                             return Positioned(
-                              left: start,
-                              top: 20,
-                              child: Column(
-                                children: [
-                                  const Icon(Icons.circle, size: 10, color: Colors.orange),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    formatTime(timestamp.time),
-                                    style: const TextStyle(fontSize: 10),
-                                  ),
-                                ],
+                              left: start - 4,
+                              top: 10,
+                              child: Transform.translate(
+                                offset: Offset(0, -1),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 2,
+                                      height: 10,
+                                      color: Colors.orange,
+                                    ),
+                                    CustomPaint(
+                                      size: Size(2, 6),
+                                      painter: _TrianglePainter(
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      formatTime(timestamp.time),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           }
@@ -107,38 +341,59 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
 
               const SizedBox(height: 16),
 
-              // List
+              // List of timestamps
               Expanded(
-                child: timestamps.isEmpty
-                    ? const Center(child: Text('No timestamps yet.'))
-                    : ListView.builder(
-                        itemCount: timestamps.length,
-                        itemBuilder: (context, index) {
-                          final timestamp = timestamps[index];
-                          final isDuration = timestamp.endTime != null;
-                          final displayTime = isDuration
-                              ? "${formatTime(timestamp.time)} → ${formatTime(timestamp.endTime!)}"
-                              : formatTime(timestamp.time);
+                child:
+                    sortedTimestamps.isEmpty
+                        ? const Center(
+                          child: Text(
+                            'No timestamps yet.',
+                            style: TextStyle(color: Colors.white60),
+                          ),
+                        )
+                        : ListView.builder(
+                          itemCount: sortedTimestamps.length,
+                          itemBuilder: (context, index) {
+                            final timestamp = sortedTimestamps[index];
+                            final isDuration = timestamp.endTime != null;
+                            final displayTime =
+                                isDuration
+                                    ? "${formatTime(timestamp.time)} → ${formatTime(timestamp.endTime!)}"
+                                    : formatTime(timestamp.time);
 
-                          return ListTile(
-                            leading: const Icon(Icons.access_time, color: Colors.blueAccent),
-                            title: Text(displayTime),
-                            subtitle: Text(
-                              timestamp.description.isNotEmpty
-                                  ? timestamp.description
-                                  : 'No description',
-                            ),
-                            trailing: timestamp.image != null
-                                ? Image.network(
-                                    timestamp.image!,
-                                    width: 40,
-                                    height: 40,
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                          );
-                        },
-                      ),
+                            return InkWell(
+                              onTap: () {
+                                _showEditTimestampDialog(context, timestamp);
+                              },
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.access_time,
+                                  color: Colors.orange,
+                                ),
+                                title: Text(
+                                  displayTime,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                subtitle: Text(
+                                  timestamp.description.isNotEmpty
+                                      ? timestamp.description
+                                      : 'No description',
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
+                                trailing:
+                                    timestamp.image != null
+                                        ? Image.network(
+                                          timestamp.image!,
+                                          width: 40,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                        )
+                                        : null,
+                              ),
+                            );
+                          },
+                        ),
               ),
             ],
           ),
@@ -148,11 +403,39 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
   }
 
   String formatTime(int milliseconds) {
+    int ms = milliseconds % 1000;
     int seconds = (milliseconds ~/ 1000) % 60;
     int minutes = (milliseconds ~/ 60000) % 60;
     int hours = milliseconds ~/ 3600000;
     return "${hours.toString().padLeft(2, '0')}:"
         "${minutes.toString().padLeft(2, '0')}:"
-        "${seconds.toString().padLeft(2, '0')}";
+        "${seconds.toString().padLeft(2, '0')}."
+        "${ms.toString().padLeft(3, '0')}";
   }
+}
+
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+
+  _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
+
+    final path =
+        Path()
+          ..moveTo(0, 0)
+          ..lineTo(size.width / 2, size.height)
+          ..lineTo(size.width, 0)
+          ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

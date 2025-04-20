@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/record.dart';
 import '../../models/collection.dart';
+import '../../providers/record_provider.dart';
 import 'record_info_screen.dart';
 import 'record_screen.dart';
 import 'timestamp_list_screen.dart';
@@ -25,6 +27,14 @@ class _MainRecordScreenState extends State<MainRecordScreen>
   @override
   void initState() {
     super.initState();
+
+    final recordProvider = Provider.of<RecordProvider>(context, listen: false);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await recordProvider.loadTimestampsForRecord(widget.record);
+      recordProvider.prepareStopwatchForRecord(widget.record);
+    });
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -34,9 +44,9 @@ class _MainRecordScreenState extends State<MainRecordScreen>
 
   void _toggleRecordScreen() {
     if (_controller.isCompleted) {
-      _controller.reverse(); // Hide RecordScreen
+      _controller.reverse();
     } else {
-      _controller.forward(); // Show RecordScreen
+      _controller.forward();
     }
   }
 
@@ -51,6 +61,21 @@ class _MainRecordScreenState extends State<MainRecordScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text("Record"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            final recordProvider = Provider.of<RecordProvider>(
+              context,
+              listen: false,
+            );
+            if (recordProvider.isPlaying) {
+              recordProvider.togglePlay();
+            }
+
+            Navigator.pop(context);
+          },
+        ),
+
         actions: [
           IconButton(
             icon: AnimatedIcon(
@@ -70,7 +95,6 @@ class _MainRecordScreenState extends State<MainRecordScreen>
 
           return Stack(
             children: [
-              /// Slides up to hide
               Positioned(
                 top: recordOffset,
                 left: 0,

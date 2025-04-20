@@ -8,19 +8,14 @@ import 'collection_provider.dart';
 import '../services/navigation_service.dart';
 
 class RecordProvider extends ChangeNotifier {
+  // --------------------------------------------------
+  // Records
+  // --------------------------------------------------
+
   List<Record> _records = [];
-  bool _isPlaying = false;
-  Stopwatch _stopwatch = Stopwatch();
-  Timer? _timer;
-
-  // For duration timestamps
-  int? _heldStartTime;
-
-  RecordProvider() {
-    fetchRecords();
-  }
-
   String _searchQuery = '';
+
+  List<Record> get records => _records;
 
   List<Record> get filteredRecords {
     if (_searchQuery.isEmpty) return _records;
@@ -34,11 +29,13 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<Record> get records => _records;
-
   Future<void> fetchRecords() async {
     _records = await DatabaseHelper.instance.getAllRecords();
     notifyListeners();
+  }
+
+  Future<Record?> getRecordById(int id) async {
+    return await DatabaseHelper.instance.getRecordById(id);
   }
 
   Future<void> updateRecord(Record updatedRecord) async {
@@ -46,16 +43,15 @@ class RecordProvider extends ChangeNotifier {
       (record) => record.id == updatedRecord.id,
     );
     if (index != -1) {
-      await DatabaseHelper.instance.updateRecord(updatedRecord); // <-- important!
+      await DatabaseHelper.instance.updateRecord(updatedRecord);
       _records[index] = updatedRecord;
       notifyListeners();
     }
   }
 
-  Future<void> addRecord(Record record) async {
-    await DatabaseHelper.instance.insertRecord(record);
+  Future<int> addRecord(Record record) async {
+    final newId = await DatabaseHelper.instance.insertRecord(record);
     await fetchRecords();
-
     await Future.delayed(Duration(milliseconds: 100));
 
     final context = NavigationService.navigatorKey.currentContext;
@@ -65,11 +61,15 @@ class RecordProvider extends ChangeNotifier {
         listen: false,
       );
       await collectionProvider.fetchCollections();
-      collectionProvider.updateCollectionLastUpdated(
-        record.collectionId!,
-        DateTime.now(),
-      );
+      if (record.collectionId != null) {
+        collectionProvider.updateCollectionLastUpdated(
+          record.collectionId!,
+          DateTime.now(),
+        );
+      }
     }
+
+    return newId;
   }
 
   Future<void> deleteRecord(Record record) async {
@@ -85,13 +85,92 @@ class RecordProvider extends ChangeNotifier {
 
   List<Record> getAllRecords() => List.unmodifiable(_records);
 
-  bool get isPlaying => _isPlaying;
-  int get elapsedMilliseconds => _stopwatch.elapsedMilliseconds;
+  // --------------------------------------------------
+  // Stopwatch
+  // --------------------------------------------------
 
-  void addRecordLocal(Record record) {
-    _records.add(record);
+  bool _isPlaying = false;
+  Stopwatch _stopwatch = Stopwatch();
+  bool get isPlaying => _isPlaying;
+  Timer? _ticker;
+
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(Duration(milliseconds: 100), (_) {
+      if (_isPlaying) {
+        notifyListeners();
+      }
+    });
+  }
+
+  void _stopTicker() {
+    _ticker?.cancel();
+    _ticker = null;
+  }
+
+  final Map<int, int> _recordStartOffsets = {};
+
+  void togglePlay() {
+    if (_isPlaying) {
+      _stopwatch.stop();
+      _stopTicker();
+    } else {
+      _stopwatch.start();
+      _startTicker();
+    }
+    _isPlaying = !_isPlaying;
     notifyListeners();
   }
+
+  void startStopwatchForRecord(Record record, List<Timestamp> timestamps) {
+    int maxTime = 0;
+    if (timestamps.isNotEmpty) {
+      maxTime = timestamps
+          .map((t) => t.endTime ?? t.time)
+          .reduce((a, b) => a > b ? a : b);
+    }
+
+    _stopwatch.reset();
+    _stopwatch.start();
+    _startTicker();
+
+    _recordStartOffsets[record.id!] = maxTime;
+    _isPlaying = true;
+    notifyListeners();
+  }
+
+  void resetTimerForRecord(Record record) {
+    _stopwatch.stop();
+    _stopwatch.reset();
+    _stopTicker();
+    _recordStartOffsets.remove(record.id);
+    _isPlaying = false;
+    notifyListeners();
+  }
+
+  int _offsetMilliseconds = 0;
+
+  void prepareStopwatchForRecord(Record record) {
+    _stopwatch.reset();
+    _offsetMilliseconds =
+        record.timestamps.isNotEmpty
+            ? record.timestamps
+                .map((t) => t.endTime ?? t.time)
+                .reduce((a, b) => a > b ? a : b)
+            : 0;
+    _isPlaying = false;
+    notifyListeners();
+  }
+
+  int getElapsedMillisecondsForRecord(int recordId) {
+    return _offsetMilliseconds + _stopwatch.elapsedMilliseconds;
+  }
+
+  // --------------------------------------------------
+  // Timestamps
+  // --------------------------------------------------
+
+  int? _heldStartTime;
 
   List<Timestamp> getTimestampsForRecord(int recordId) {
     final record = records.firstWhere(
@@ -112,46 +191,46 @@ class RecordProvider extends ChangeNotifier {
     final timestamps = await DatabaseHelper.instance.getTimestampsByRecordId(
       record.id!,
     );
+
     record.timestamps = timestamps;
     notifyListeners();
   }
 
-  // Single timestamp (point-in-time)
   Future<void> addTimestampToRecord(
     Record record, {
     String? description,
   }) async {
+    final currentTime = getElapsedMillisecondsForRecord(record.id!);
+
     final timestamp = Timestamp(
-      id: null, // Will be set by SQLite
+      id: null,
       recordId: record.id!,
-      time: _stopwatch.elapsedMilliseconds,
+      time: currentTime,
       description: description ?? "",
       dateCreated: DateTime.now(),
       lastUpdated: DateTime.now(),
     );
 
-    // Save to database
     final insertedId = await DatabaseHelper.instance.insertTimestamp(timestamp);
-    final savedTimestamp = timestamp.copyWith(id: insertedId); // assign the id
+    final savedTimestamp = timestamp.copyWith(id: insertedId);
 
-    // Add to the record
     record.addTimestamp(savedTimestamp);
     notifyListeners();
   }
 
-  // Duration start
-  void startHeldTimestamp() {
-    _heldStartTime = _stopwatch.elapsedMilliseconds;
+  void startHeldTimestamp(Record record) {
+    _heldStartTime = getElapsedMillisecondsForRecord(record.id!);
   }
 
-  // Duration end and save
   Future<void> endHeldTimestamp(Record record, {String? description}) async {
     if (_heldStartTime != null) {
+      final currentTime = getElapsedMillisecondsForRecord(record.id!);
+
       final timestamp = Timestamp(
         id: null,
         recordId: record.id!,
         time: _heldStartTime!,
-        endTime: _stopwatch.elapsedMilliseconds,
+        endTime: currentTime,
         description: description ?? "",
         dateCreated: DateTime.now(),
         lastUpdated: DateTime.now(),
@@ -166,32 +245,8 @@ class RecordProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> removeTimestampFromRecord(Record record, int index) async {
-    final timestamp = record.timestamps[index];
-    await DatabaseHelper.instance.deleteTimestamp(timestamp.id!);
-
-    record.removeTimestamp(index);
-    notifyListeners();
-  }
-
-  void togglePlay() {
-    if (_isPlaying) {
-      _stopwatch.stop();
-      _timer?.cancel();
-    } else {
-      _stopwatch.start();
-      _timer = Timer.periodic(Duration(milliseconds: 100), (_) {
-        notifyListeners();
-      });
-    }
-    _isPlaying = !_isPlaying;
-    notifyListeners();
-  }
-
   Future<void> updateTimestamp(Timestamp updatedTimestamp) async {
     await DatabaseHelper.instance.updateTimestamp(updatedTimestamp);
-
-    // Update in-memory record
     final record = _records.firstWhere(
       (r) => r.id == updatedTimestamp.recordId,
     );
@@ -204,18 +259,22 @@ class RecordProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteTimestamp(Record record, int timestampId) async {
+  Future<void> deleteTimestamp(
+    BuildContext context,
+    Record record,
+    int timestampId,
+  ) async {
     await DatabaseHelper.instance.deleteTimestamp(timestampId);
 
-    // Remove from in-memory record
     record.timestamps.removeWhere((t) => t.id == timestampId);
+
     notifyListeners();
   }
 
-  void resetTimerForRecord(Record record) {
-    _stopwatch.reset();
-    record.timestamps.clear();
-    _isPlaying = false;
+  Future<void> removeTimestampFromRecord(Record record, int index) async {
+    final timestamp = record.timestamps[index];
+    await DatabaseHelper.instance.deleteTimestamp(timestamp.id!);
+    record.removeTimestamp(index);
     notifyListeners();
   }
 }

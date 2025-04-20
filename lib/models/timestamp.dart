@@ -1,8 +1,8 @@
 class Timestamp {
   int? id;
   int recordId;
-  int time; // start time in milliseconds
-  int? endTime; // optional end time
+  int time; 
+  int? endTime; 
   String description;
   String? image;
   DateTime dateCreated;
