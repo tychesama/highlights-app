@@ -164,8 +164,8 @@ class CollectionInfoScreen extends StatelessWidget {
                   );
 
                   if (confirmRemove == true) {
-                    Navigator.pop(context); 
-                    await _removeFromCollection(context, record); 
+                    Navigator.pop(context);
+                    await _removeFromCollection(context, record);
                   }
                 },
               ),
@@ -198,12 +198,17 @@ class CollectionInfoScreen extends StatelessWidget {
                   );
 
                   if (confirmDelete == true) {
+                    Navigator.pop(
+                      editDialogContext,
+                    ); // 👈 Close the edit dialog FIRST
+
                     final recordProvider = Provider.of<RecordProvider>(
                       context,
                       listen: false,
                     );
+
                     await recordProvider.deleteRecord(record);
-                    await recordProvider.fetchRecords(); 
+                    await recordProvider.fetchRecords();
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -211,8 +216,6 @@ class CollectionInfoScreen extends StatelessWidget {
                         duration: Duration(seconds: 2),
                       ),
                     );
-
-                    Navigator.pop(context); // Close edit dialog
                   }
                 },
               ),
@@ -286,8 +289,8 @@ class CollectionInfoScreen extends StatelessWidget {
       lastUpdated: DateTime.now(),
     );
 
-    await recordProvider.updateRecord(updatedRecord); 
-    await recordProvider.fetchRecords(); 
+    await recordProvider.updateRecord(updatedRecord);
+    await recordProvider.fetchRecords();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
