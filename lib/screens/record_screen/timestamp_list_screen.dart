@@ -35,9 +35,10 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
         return Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            border: Border.all(color: Colors.grey, width: 1.5),
-            color: Theme.of(context).scaffoldBackgroundColor,
+            // Removed the rounded corners and kept it rectangular
+            borderRadius: BorderRadius.zero, // No rounded corners
+            border: Border.all(color: Colors.white30, width: 1.5),
+            color: Theme.of(context).scaffoldBackgroundColor, // Dark background for contrast
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,19 +54,19 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                     width: double.infinity,
                     child: Stack(
                       children: [
-                        // Base line
+                        // Base line for timeline
                         Positioned.fill(
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Container(
                               height: 4,
                               width: constraints.maxWidth,
-                              color: Colors.blueGrey.withOpacity(0.3),
+                              color: Colors.white24, // Lighter color for the base line
                             ),
                           ),
                         ),
 
-                        // Markers or durations
+                        // Markers or durations on the timeline
                         ...timestamps.map((timestamp) {
                           final double start = (timestamp.time / maxTime) * constraints.maxWidth;
                           final double? end = timestamp.endTime != null
@@ -92,7 +93,7 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     formatTime(timestamp.time),
-                                    style: const TextStyle(fontSize: 10),
+                                    style: const TextStyle(fontSize: 10, color: Colors.white70),
                                   ),
                                 ],
                               ),
@@ -107,10 +108,10 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
 
               const SizedBox(height: 16),
 
-              // List
+              // List of timestamps
               Expanded(
                 child: timestamps.isEmpty
-                    ? const Center(child: Text('No timestamps yet.'))
+                    ? const Center(child: Text('No timestamps yet.', style: TextStyle(color: Colors.white60)))
                     : ListView.builder(
                         itemCount: timestamps.length,
                         itemBuilder: (context, index) {
@@ -121,12 +122,14 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                               : formatTime(timestamp.time);
 
                           return ListTile(
-                            leading: const Icon(Icons.access_time, color: Colors.blueAccent),
-                            title: Text(displayTime),
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.access_time, color: Colors.orange),
+                            title: Text(displayTime, style: const TextStyle(color: Colors.white)),
                             subtitle: Text(
                               timestamp.description.isNotEmpty
                                   ? timestamp.description
                                   : 'No description',
+                              style: const TextStyle(color: Colors.white54),
                             ),
                             trailing: timestamp.image != null
                                 ? Image.network(
@@ -151,8 +154,8 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
     int seconds = (milliseconds ~/ 1000) % 60;
     int minutes = (milliseconds ~/ 60000) % 60;
     int hours = milliseconds ~/ 3600000;
-    return "${hours.toString().padLeft(2, '0')}:"
-        "${minutes.toString().padLeft(2, '0')}:"
-        "${seconds.toString().padLeft(2, '0')}";
+    return "${hours.toString().padLeft(2, '0')}:" 
+           "${minutes.toString().padLeft(2, '0')}:" 
+           "${seconds.toString().padLeft(2, '0')}";
   }
 }

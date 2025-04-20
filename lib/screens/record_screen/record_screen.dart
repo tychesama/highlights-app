@@ -9,17 +9,19 @@ class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key, required this.record});
 
   @override
-  State<RecordScreen> createState() => _RecordScreenState(); // 👈 don't forget this
+  State<RecordScreen> createState() => _RecordScreenState();
 }
 
 class _RecordScreenState extends State<RecordScreen> {
   String formatTime(int milliseconds) {
+    int ms = milliseconds % 1000;
     int seconds = (milliseconds ~/ 1000) % 60;
     int minutes = (milliseconds ~/ 60000) % 60;
     int hours = milliseconds ~/ 3600000;
-    return "${hours.toString().padLeft(2, '0')}:"
-        "${minutes.toString().padLeft(2, '0')}:"
-        "${seconds.toString().padLeft(2, '0')}";
+    return "${hours.toString().padLeft(2, '0')}:" 
+        "${minutes.toString().padLeft(2, '0')}:" 
+        "${seconds.toString().padLeft(2, '0')}." 
+        "${ms.toString().padLeft(3, '0')}";
   }
 
   @override
@@ -29,36 +31,29 @@ class _RecordScreenState extends State<RecordScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return SizedBox(
-      height: 350, // 2x your original recordScreenHeight (175)
+      height: 350,
       child: Container(
         width: double.infinity,
-        color: Theme.of(context).scaffoldBackgroundColor,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor, // Ensure background color is set
+          border: Border(
+            top: BorderSide(color: Colors.white30, width: 1.5),
+          ),
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (isPlaying)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    "Recording...",
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  //removed the visual "recording..."
                 ],
               ),
+
+            const SizedBox(height: 12),
+
             GestureDetector(
               onTap: () {
                 if (isPlaying) {
@@ -66,8 +61,8 @@ class _RecordScreenState extends State<RecordScreen> {
                 }
               },
               child: Container(
-                width: screenWidth * 0.25,
-                height: screenWidth * 0.25,
+                width: screenWidth * 0.45, 
+                height: screenWidth * 0.45, 
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.red,
@@ -83,7 +78,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   child: Text(
                     'Mark',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 24, // Bigger text
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -91,6 +86,10 @@ class _RecordScreenState extends State<RecordScreen> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 12), // Less spacing before timer
+
+            /// TIME - closer to buttons
             Text(
               formatTime(recordProvider.elapsedMilliseconds),
               style: const TextStyle(
@@ -98,13 +97,60 @@ class _RecordScreenState extends State<RecordScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            ElevatedButton(
-              onPressed: recordProvider.togglePlay,
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              ),
-              child: Text(isPlaying ? 'Pause' : 'Play'),
+
+            const Spacer(), // Pushes buttons downward
+
+            /// CONTROLS - now lower
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.play_arrow),
+                  tooltip: 'Play',
+                  color: Colors.green,
+                  onPressed: () {
+                    if (!recordProvider.isPlaying) {
+                      recordProvider.togglePlay();
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.pause),
+                  tooltip: 'Pause',
+                  color: Colors.amber,
+                  onPressed: () {
+                    if (recordProvider.isPlaying) {
+                      recordProvider.togglePlay();
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.stop),
+                  tooltip: 'Stop',
+                  color: Colors.red,
+                  onPressed: () {
+                    // recordProvider.resetRecording();
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.fast_forward),
+                  tooltip: 'Fast Forward',
+                  color: Colors.blue,
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: const Icon(Icons.undo),
+                  tooltip: 'Undo',
+                  color: Colors.purple,
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_horiz),
+                  tooltip: 'More',
+                  color: Colors.grey,
+                  onPressed: () {},
+                ),
+              ],
             ),
           ],
         ),
