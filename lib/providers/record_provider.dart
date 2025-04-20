@@ -41,11 +41,12 @@ class RecordProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateRecord(Record updatedRecord) {
+  Future<void> updateRecord(Record updatedRecord) async {
     final index = _records.indexWhere(
       (record) => record.id == updatedRecord.id,
     );
     if (index != -1) {
+      await DatabaseHelper.instance.updateRecord(updatedRecord); // <-- important!
       _records[index] = updatedRecord;
       notifyListeners();
     }

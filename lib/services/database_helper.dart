@@ -195,7 +195,6 @@ class DatabaseHelper {
       'episode': record.episode,
       'dateCreated': record.dateCreated.toIso8601String(),
       'lastUpdated': record.lastUpdated.toIso8601String(),
-      'timestamps': jsonEncode(record.timestamps),
       'notes': record.notes,
       'image': record.image,
     });
@@ -209,6 +208,11 @@ class DatabaseHelper {
       );
     }
 
+    for (var ts in record.timestamps) {
+      ts.recordId = recordId;
+      await insertTimestamp(ts);
+    }
+
     return recordId;
   }
 
@@ -220,56 +224,76 @@ class DatabaseHelper {
       whereArgs: [collectionId],
     );
 
-    return List.generate(maps.length, (i) {
-      return Record(
-        id: maps[i]['id'],
-        name: maps[i]['name'],
-        collectionId: maps[i]['collectionId'],
-        episode: maps[i]['episode'],
-        dateCreated: DateTime.parse(maps[i]['dateCreated']),
-        lastUpdated: DateTime.parse(maps[i]['lastUpdated']),
-        timestamps: _decodeTimestamps(maps[i]['timestamps']),
-        notes: maps[i]['notes'],
-        image: maps[i]['image'],
-      );
-    });
+    return Future.wait(
+      maps.map((map) async {
+        final timestamps = await getTimestampsByRecordId(map['id']);
+        return Record(
+          id: map['id'],
+          name: map['name'],
+          collectionId: map['collectionId'],
+          episode: map['episode'],
+          dateCreated: DateTime.parse(map['dateCreated']),
+          lastUpdated: DateTime.parse(map['lastUpdated']),
+          timestamps: timestamps,
+          notes: map['notes'],
+          image: map['image'],
+        );
+      }),
+    );
   }
 
   Future<List<Record>> getAllRecords() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('records');
 
-    return List.generate(maps.length, (i) {
-      return Record(
-        id: maps[i]['id'],
-        name: maps[i]['name'],
-        collectionId: maps[i]['collectionId'],
-        episode: maps[i]['episode'],
-        dateCreated: DateTime.parse(maps[i]['dateCreated']),
-        lastUpdated: DateTime.parse(maps[i]['lastUpdated']),
-        timestamps: _decodeTimestamps(maps[i]['timestamps']),
-        notes: maps[i]['notes'],
-        image: maps[i]['image'],
-      );
-    });
+    return Future.wait(
+      maps.map((map) async {
+        final timestamps = await getTimestampsByRecordId(map['id']);
+        return Record(
+          id: map['id'],
+          name: map['name'],
+          collectionId: map['collectionId'],
+          episode: map['episode'],
+          dateCreated: DateTime.parse(map['dateCreated']),
+          lastUpdated: DateTime.parse(map['lastUpdated']),
+          timestamps: timestamps,
+          notes: map['notes'],
+          image: map['image'],
+        );
+      }),
+    );
   }
 
   Future<int> updateRecord(Record record) async {
     final db = await database;
-    return await db.update(
+
+    int result = await db.update(
       'records',
       {
         'name': record.name,
         'collectionId': record.collectionId,
         'episode': record.episode,
         'lastUpdated': DateTime.now().toIso8601String(),
-        'timestamps': jsonEncode(record.timestamps),
         'notes': record.notes,
         'image': record.image,
       },
       where: 'id = ?',
       whereArgs: [record.id],
     );
+
+    await db.delete(
+      'timestamps',
+      where: 'recordId = ?',
+      whereArgs: [record.id],
+    );
+
+    // Re-insert updated timestamps
+    for (var timestamp in record.timestamps) {
+      timestamp.recordId = record.id!; // Make sure this is set
+      await insertTimestamp(timestamp);
+    }
+
+    return result;
   }
 
   Future<int> deleteRecord(int id) async {
