@@ -140,14 +140,13 @@ class RecordProvider extends ChangeNotifier {
   }
 
   void resetTimerForRecord(Record record) {
-  _stopwatch.stop();
-  _stopwatch.reset();
-  _stopTicker();
-  _recordStartOffsets.remove(record.id);
-  _isPlaying = false;
-  notifyListeners();
-}
-
+    _stopwatch.stop();
+    _stopwatch.reset();
+    _stopTicker();
+    _recordStartOffsets.remove(record.id);
+    _isPlaying = false;
+    notifyListeners();
+  }
 
   int _offsetMilliseconds = 0;
 
@@ -260,9 +259,15 @@ class RecordProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteTimestamp(Record record, int timestampId) async {
+  Future<void> deleteTimestamp(
+    BuildContext context,
+    Record record,
+    int timestampId,
+  ) async {
     await DatabaseHelper.instance.deleteTimestamp(timestampId);
+
     record.timestamps.removeWhere((t) => t.id == timestampId);
+
     notifyListeners();
   }
 

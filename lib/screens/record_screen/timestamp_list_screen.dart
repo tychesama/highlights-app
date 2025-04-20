@@ -4,6 +4,7 @@ import '../../models/timestamp.dart';
 import '../../providers/record_provider.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import '../../services/database_helper.dart';
 
 class TimestampListScreen extends StatefulWidget {
   final Record record;
@@ -50,6 +51,130 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
     setState(() {
       _sortMode = allModes[nextIndex];
     });
+  }
+
+  void _showEditTimestampDialog(BuildContext context, Timestamp timestamp) {
+    final recordProvider = Provider.of<RecordProvider>(context, listen: false);
+    final TextEditingController descController = TextEditingController(
+      text: timestamp.description,
+    );
+    final TextEditingController timeController = TextEditingController(
+      text: timestamp.time.toString(),
+    );
+    final TextEditingController? endTimeController =
+        timestamp.endTime != null
+            ? TextEditingController(text: timestamp.endTime.toString())
+            : null;
+
+    showDialog(
+      context: context,
+      builder: (editDialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Text("Edit Timestamp"),
+              Spacer(),
+              IconButton(
+                icon: Icon(Icons.delete_forever, color: Colors.red),
+                tooltip: "Delete Timestamp",
+                onPressed: () async {
+                  // Show confirmation dialog to remove timestamp
+                  final confirmDelete = await showDialog<bool>(
+                    context: context,
+                    builder:
+                        (dialogContext) => AlertDialog(
+                          title: Text("Delete Timestamp"),
+                          content: Text(
+                            "Are you sure you want to delete this timestamp?",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed:
+                                  () => Navigator.pop(dialogContext, false),
+                              child: Text("Cancel"),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                // Proceed with the deletion
+                                await recordProvider.deleteTimestamp(
+                                  context,
+                                  widget.record,
+                                  timestamp.id!,
+                                );
+                                Navigator.pop(
+                                  dialogContext,
+                                  true,
+                                ); // Close the confirm dialog
+                                // Show Snackbar after deletion
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Timestamp deleted!')),
+                                );
+                              },
+                              child: Text(
+                                "Delete",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                  );
+
+                  // If the user confirmed the deletion, just close the edit dialog
+                  if (confirmDelete == true) {
+                    Navigator.pop(
+                      editDialogContext,
+                    ); // Close the timestamp edit dialog
+                  }
+                },
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(labelText: "Description"),
+              ),
+              TextField(
+                controller: timeController,
+                decoration: const InputDecoration(labelText: "Start Time (ms)"),
+                keyboardType: TextInputType.number,
+              ),
+              if (endTimeController != null)
+                TextField(
+                  controller: endTimeController,
+                  decoration: const InputDecoration(labelText: "End Time (ms)"),
+                  keyboardType: TextInputType.number,
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(editDialogContext),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // Save the changes made to the timestamp
+                timestamp.description = descController.text;
+                timestamp.time =
+                    int.tryParse(timeController.text) ?? timestamp.time;
+                if (endTimeController != null) {
+                  timestamp.endTime =
+                      int.tryParse(endTimeController.text) ?? timestamp.endTime;
+                }
+
+                // Update the timestamp
+                await recordProvider.updateTimestamp(timestamp);
+                Navigator.pop(editDialogContext); // Close the dialog
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -169,10 +294,10 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                             );
                           } else {
                             return Positioned(
-                              left: start - 4, 
+                              left: start - 4,
                               top: 10,
                               child: Transform.translate(
-                                offset: Offset(0, -1), 
+                                offset: Offset(0, -1),
                                 child: Column(
                                   children: [
                                     Container(
@@ -236,31 +361,36 @@ class _TimestampListScreenState extends State<TimestampListScreen> {
                                     ? "${formatTime(timestamp.time)} → ${formatTime(timestamp.endTime!)}"
                                     : formatTime(timestamp.time);
 
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.access_time,
-                                color: Colors.orange,
+                            return InkWell(
+                              onTap: () {
+                                _showEditTimestampDialog(context, timestamp);
+                              },
+                              child: ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.access_time,
+                                  color: Colors.orange,
+                                ),
+                                title: Text(
+                                  displayTime,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                subtitle: Text(
+                                  timestamp.description.isNotEmpty
+                                      ? timestamp.description
+                                      : 'No description',
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
+                                trailing:
+                                    timestamp.image != null
+                                        ? Image.network(
+                                          timestamp.image!,
+                                          width: 40,
+                                          height: 40,
+                                          fit: BoxFit.cover,
+                                        )
+                                        : null,
                               ),
-                              title: Text(
-                                displayTime,
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              subtitle: Text(
-                                timestamp.description.isNotEmpty
-                                    ? timestamp.description
-                                    : 'No description',
-                                style: const TextStyle(color: Colors.white54),
-                              ),
-                              trailing:
-                                  timestamp.image != null
-                                      ? Image.network(
-                                        timestamp.image!,
-                                        width: 40,
-                                        height: 40,
-                                        fit: BoxFit.cover,
-                                      )
-                                      : null,
                             );
                           },
                         ),
