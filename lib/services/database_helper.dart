@@ -162,6 +162,19 @@ class DatabaseHelper {
     });
   }
 
+  Future<Map<String, dynamic>?> getCollectionById(int id) async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'collections',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isNotEmpty) {
+      return maps.first;
+    }
+    return null;
+  }
+
   Future<int> deleteCollection(int id) async {
     final db = await database;
     return await db.delete('collections', where: 'id = ?', whereArgs: [id]);
@@ -214,6 +227,17 @@ class DatabaseHelper {
     }
 
     return recordId;
+  }
+
+  Future<Record?> getRecordById(int id) async {
+    final db = await database;
+    final maps = await db.query('records', where: 'id = ?', whereArgs: [id]);
+
+    if (maps.isNotEmpty) {
+      return Record.fromMap(maps.first);
+    } else {
+      return null;
+    }
   }
 
   Future<List<Record>> getRecordsByCollection(int collectionId) async {

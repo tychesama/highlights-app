@@ -250,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final newRecord = Record(
                   name:
                       titleController.text.isNotEmpty
@@ -269,22 +269,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   listen: false,
                 );
-                recordProvider.addRecord(newRecord);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Record created successfully!'),
-                    duration: Duration(seconds: 2),
-                  ),
+                final collectionProvider = Provider.of<CollectionProvider>(
+                  context,
+                  listen: false,
                 );
 
-                _scrollController.animateTo(
-                  0,
-                  duration: Duration(milliseconds: 500),
-                  curve: Curves.easeInOut,
-                );
+                final newId = await recordProvider.addRecord(newRecord);
+                final createdRecord = await recordProvider.getRecordById(newId);
 
                 Navigator.pop(context);
+
+                if (createdRecord != null) {
+                  final selectedCollection =
+                      selectedCollectionId != null
+                          ? collectionProvider.getCollectionById(
+                            selectedCollectionId!,
+                          )
+                          : null;
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => MainRecordScreen(
+                            record: createdRecord,
+                            collection: selectedCollection,
+                          ),
+                    ),
+                  );
+                }
               },
               child: Text("OK"),
             ),
@@ -426,13 +440,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text("Cancel"),
                 ),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final collectionProvider = Provider.of<CollectionProvider>(
                       context,
                       listen: false,
                     );
 
-                    Collection newCollection = Collection(
+                    final newCollection = Collection(
                       name:
                           nameController.text.isNotEmpty
                               ? nameController.text
@@ -445,17 +459,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       thumbnail: thumbnailPath,
                     );
 
-                    collectionProvider.addCollection(newCollection);
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Collection created successfully!'),
-                        duration: Duration(seconds: 2),
-                      ),
+                    final insertedId = await collectionProvider.addCollection(
+                      newCollection,
                     );
+                    final insertedCollection = await collectionProvider
+                        .getCollectionById(insertedId);
 
-                    Navigator.pop(context);
+                    if (insertedCollection != null) {
+                      Navigator.pop(context); // close dialog
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => CollectionInfoScreen(
+                                collection: insertedCollection,
+                              ),
+                        ),
+                      );
+
+                      
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to load new collection'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
+
                   child: Text("OK"),
                 ),
               ],
@@ -757,8 +790,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                       context,
                                       MaterialPageRoute(
                                         builder:
-                                            (context) =>
-                                                MainRecordScreen(record: record, collection: collection),
+                                            (context) => MainRecordScreen(
+                                              record: record,
+                                              collection: collection,
+                                            ),
                                       ),
                                     );
                                   },

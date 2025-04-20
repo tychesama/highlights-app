@@ -50,6 +50,12 @@ class CollectionProvider with ChangeNotifier {
     fetchCollections();
   }
 
+  Future<int> addCollection(Collection collection) async {
+    final id = await DatabaseHelper.instance.insertCollection(collection);
+    await fetchCollections();
+    return id;
+  }
+
   Collection? getCollectionById(int collectionId) {
     try {
       return _collections.firstWhere(
@@ -70,11 +76,6 @@ class CollectionProvider with ChangeNotifier {
     await DatabaseHelper.instance.clearAllCollections();
     _collections.clear();
     notifyListeners();
-  }
-
-  Future<void> addCollection(Collection collection) async {
-    await DatabaseHelper.instance.insertCollection(collection);
-    fetchCollections();
   }
 
   Future<void> deleteCollection(int id) async {

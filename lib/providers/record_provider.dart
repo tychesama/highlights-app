@@ -46,14 +46,16 @@ class RecordProvider extends ChangeNotifier {
       (record) => record.id == updatedRecord.id,
     );
     if (index != -1) {
-      await DatabaseHelper.instance.updateRecord(updatedRecord); // <-- important!
+      await DatabaseHelper.instance.updateRecord(
+        updatedRecord,
+      ); 
       _records[index] = updatedRecord;
       notifyListeners();
     }
   }
 
-  Future<void> addRecord(Record record) async {
-    await DatabaseHelper.instance.insertRecord(record);
+  Future<int> addRecord(Record record) async {
+    final newId = await DatabaseHelper.instance.insertRecord(record);
     await fetchRecords();
 
     await Future.delayed(Duration(milliseconds: 100));
@@ -65,11 +67,19 @@ class RecordProvider extends ChangeNotifier {
         listen: false,
       );
       await collectionProvider.fetchCollections();
-      collectionProvider.updateCollectionLastUpdated(
-        record.collectionId!,
-        DateTime.now(),
-      );
+      if (record.collectionId != null) {
+        collectionProvider.updateCollectionLastUpdated(
+          record.collectionId!,
+          DateTime.now(),
+        );
+      }
     }
+
+    return newId;
+  }
+
+  Future<Record?> getRecordById(int id) async {
+    return await DatabaseHelper.instance.getRecordById(id);
   }
 
   Future<void> deleteRecord(Record record) async {
